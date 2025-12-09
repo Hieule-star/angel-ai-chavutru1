@@ -6,14 +6,15 @@ import { Button } from '@/components/ui/button';
 interface ChatInputProps {
   onSend: (message: string) => void;
   isLoading: boolean;
+  disabled?: boolean;
 }
 
-export function ChatInput({ onSend, isLoading }: ChatInputProps) {
+export function ChatInput({ onSend, isLoading, disabled = false }: ChatInputProps) {
   const [message, setMessage] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (message.trim() && !isLoading) {
+    if (message.trim() && !isLoading && !disabled) {
       onSend(message.trim());
       setMessage('');
     }
@@ -40,8 +41,9 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
               handleSubmit(e);
             }
           }}
-          placeholder="Gửi thông điệp đến ANGEL AI..."
-          className="flex-1 min-h-[44px] max-h-[120px] px-3 py-3 bg-transparent border-0 resize-none focus:outline-none text-sm md:text-base placeholder:text-muted-foreground/60"
+          placeholder={disabled ? "Vui lòng đăng nhập để tiếp tục..." : "Gửi thông điệp đến ANGEL AI..."}
+          disabled={disabled}
+          className="flex-1 min-h-[44px] max-h-[120px] px-3 py-3 bg-transparent border-0 resize-none focus:outline-none text-sm md:text-base placeholder:text-muted-foreground/60 disabled:opacity-50 disabled:cursor-not-allowed"
           rows={1}
         />
 
@@ -50,7 +52,7 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
             type="submit"
             variant="divine"
             size="icon"
-            disabled={!message.trim() || isLoading}
+            disabled={!message.trim() || isLoading || disabled}
             className="flex-shrink-0 rounded-xl"
           >
             {isLoading ? (
