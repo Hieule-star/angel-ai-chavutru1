@@ -4,9 +4,15 @@ import { User, Wallet, Sparkles, LogOut, Settings, MessageCircle } from 'lucide-
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { useUserStore } from '@/stores/userStore';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function Profile() {
-  const { user, isAuthenticated, logout, chatHistory, wallet } = useUserStore();
+  const { user, isAuthenticated, chatHistory, wallet } = useUserStore();
+  const { signOut } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut();
+  };
 
   if (!isAuthenticated) {
     return (
@@ -51,8 +57,8 @@ export default function Profile() {
                 animate={{ boxShadow: ['0 0 20px rgba(248, 227, 142, 0.3)', '0 0 40px rgba(248, 227, 142, 0.5)', '0 0 20px rgba(248, 227, 142, 0.3)'] }}
                 transition={{ duration: 3, repeat: Infinity }}
               >
-                {user?.avatar ? (
-                  <img src={user.avatar} alt={user.display_name} className="w-full h-full object-cover" />
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt={user.display_name} className="w-full h-full object-cover" />
                 ) : (
                   <User className="w-12 h-12 text-primary" />
                 )}
@@ -158,7 +164,7 @@ export default function Profile() {
               variant="ghost"
               className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
               size="lg"
-              onClick={logout}
+              onClick={handleLogout}
             >
               <LogOut className="w-5 h-5" />
               Đăng xuất

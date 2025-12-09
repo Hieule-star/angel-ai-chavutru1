@@ -1,1 +1,4 @@
 project_id = "sasbfslupxdsaqifnqzx"
+
+[functions.angel-ai]
+verify_jwt = false
