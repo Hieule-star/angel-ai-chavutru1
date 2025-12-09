@@ -1,11 +1,10 @@
 export interface User {
   id: string;
-  universal_user_id: string;
   email: string;
   display_name: string;
-  avatar: string;
-  created_at: string;
+  avatar_url: string;
   light_points: number;
+  created_at: string;
 }
 
 export interface ChatMessage {

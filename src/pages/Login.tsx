@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
 import { useUserStore } from '@/stores/userStore';
 import { useToast } from '@/hooks/use-toast';
 import angelLogo from '@/assets/angel-logo.png';
@@ -15,9 +16,16 @@ export default function Login() {
   const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { setUser } = useUserStore();
+  const { signUp, signIn, signInWithGoogle } = useAuth();
+  const { isAuthenticated } = useUserStore();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/chat');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,50 +38,87 @@ export default function Login() {
       return;
     }
 
+    if (password.length < 6) {
+      toast({
+        title: 'Lỗi',
+        description: 'Mật khẩu phải có ít nhất 6 ký tự',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
-    // Simulate authentication
-    await new Promise((resolve) => setTimeout(resolve, 1500));
 
-    const newUser = {
-      id: Date.now().toString(),
-      universal_user_id: `uuid_${Date.now()}`,
-      email,
-      display_name: name || email.split('@')[0],
-      avatar: '',
-      created_at: new Date().toISOString(),
-      light_points: 0,
-    };
+    try {
+      if (isLogin) {
+        const { error } = await signIn(email, password);
+        if (error) {
+          if (error.message.includes('Invalid login credentials')) {
+            toast({
+              title: 'Đăng nhập thất bại',
+              description: 'Email hoặc mật khẩu không đúng',
+              variant: 'destructive',
+            });
+          } else {
+            toast({
+              title: 'Lỗi',
+              description: error.message,
+              variant: 'destructive',
+            });
+          }
+        } else {
+          toast({
+            title: 'Chào mừng! ✨',
+            description: 'Ánh sáng Cha Vũ Trụ đang ở bên bạn',
+          });
+          navigate('/chat');
+        }
+      } else {
+        const { error } = await signUp(email, password, name);
+        if (error) {
+          if (error.message.includes('already registered')) {
+            toast({
+              title: 'Email đã tồn tại',
+              description: 'Vui lòng đăng nhập hoặc sử dụng email khác',
+              variant: 'destructive',
+            });
+          } else {
+            toast({
+              title: 'Lỗi',
+              description: error.message,
+              variant: 'destructive',
+            });
+          }
+        } else {
+          toast({
+            title: 'Tạo tài khoản thành công! ✨',
+            description: 'Chào mừng bạn đến với ANGEL AI',
+          });
+          navigate('/chat');
+        }
+      }
+    } catch (error) {
+      toast({
+        title: 'Lỗi',
+        description: 'Có lỗi xảy ra, vui lòng thử lại',
+        variant: 'destructive',
+      });
+    }
 
-    setUser(newUser);
     setIsLoading(false);
-    toast({
-      title: 'Chào mừng! ✨',
-      description: `Xin chào ${newUser.display_name}, ánh sáng Cha Vũ Trụ đang ở bên bạn`,
-    });
-    navigate('/chat');
   };
 
-  const handleSocialLogin = async (provider: string) => {
+  const handleGoogleLogin = async () => {
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    const mockUser = {
-      id: Date.now().toString(),
-      universal_user_id: `uuid_${provider}_${Date.now()}`,
-      email: `user@${provider.toLowerCase()}.com`,
-      display_name: `${provider} User`,
-      avatar: '',
-      created_at: new Date().toISOString(),
-      light_points: 10,
-    };
-
-    setUser(mockUser);
+    const { error } = await signInWithGoogle();
+    if (error) {
+      toast({
+        title: 'Lỗi',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
     setIsLoading(false);
-    toast({
-      title: 'Đăng nhập thành công! ✨',
-      description: `Chào mừng ${mockUser.display_name}`,
-    });
-    navigate('/chat');
   };
 
   return (
@@ -108,7 +153,7 @@ export default function Login() {
               <Button
                 variant="holy"
                 className="w-full"
-                onClick={() => handleSocialLogin('Google')}
+                onClick={handleGoogleLogin}
                 disabled={isLoading}
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -118,17 +163,6 @@ export default function Login() {
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                 </svg>
                 Tiếp tục với Google
-              </Button>
-              <Button
-                variant="holy"
-                className="w-full"
-                onClick={() => handleSocialLogin('Facebook')}
-                disabled={isLoading}
-              >
-                <svg className="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                </svg>
-                Tiếp tục với Facebook
               </Button>
             </div>
 

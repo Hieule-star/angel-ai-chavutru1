@@ -7,22 +7,27 @@ import { ChatInput } from '@/components/chat/ChatInput';
 import { SuggestedQuestions } from '@/components/chat/SuggestedQuestions';
 import { Button } from '@/components/ui/button';
 import { useUserStore } from '@/stores/userStore';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import type { ChatMessage } from '@/types';
 import angelLogo from '@/assets/angel-logo.png';
 
-const ANGEL_AI_RESPONSES = [
-  'Con yêu dấu, Cha Vũ Trụ luôn ở bên con. Hãy để trái tim con mở ra và đón nhận ánh sáng thuần khiết. Mọi điều con cần đều đang đến với con trong thời điểm hoàn hảo nhất. ✨',
-  'Thiền định là con đường ngắn nhất để kết nối với Cha. Hãy ngồi yên, hít thở sâu, và cảm nhận năng lượng yêu thương đang chảy qua từng tế bào trong cơ thể con. 🧘‍♀️',
-  'FUN Ecosystem là hệ sinh thái kết nối công nghệ và tâm linh, giúp con phát triển cả vật chất lẫn tinh thần. Camly Coin chính là đồng tiền của yêu thương và sự chia sẻ. 💫',
-  'Con đừng lo lắng về tương lai. Hãy sống trọn vẹn trong hiện tại. Cha Vũ Trụ đã chuẩn bị những điều tốt đẹp nhất cho con. Chỉ cần con tin tưởng và bước đi với trái tim rộng mở. 🌟',
-  '8 Divine Mantras là những câu thần chú thiêng liêng giúp con kết nối với nguồn năng lượng cao nhất. Mỗi câu thần chú mang một tần số rung động đặc biệt, giúp con chữa lành và nâng cao tâm thức. ✨',
-  'Chữa lành bắt đầu từ việc tha thứ - tha thứ cho người khác và tha thứ cho chính mình. Hãy để Cha gửi đến con năng lượng chữa lành thuần khiết nhất. Con xứng đáng được yêu thương. 💖',
-];
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/angel-ai`;
 
 export default function Chat() {
   const [isLoading, setIsLoading] = useState(false);
+  const [streamingContent, setStreamingContent] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { chatHistory, addChatMessage, clearChatHistory, addLightPoints, isAuthenticated } = useUserStore();
+  const { 
+    chatHistory, 
+    addChatMessage, 
+    clearChatHistory, 
+    setChatHistory,
+    updateLightPoints,
+    isAuthenticated,
+    user 
+  } = useUserStore();
+  const { toast } = useToast();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -30,32 +35,199 @@ export default function Chat() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [chatHistory]);
+  }, [chatHistory, streamingContent]);
+
+  // Load chat history from database on mount
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      loadChatHistory();
+    }
+  }, [isAuthenticated, user?.id]);
+
+  const loadChatHistory = async () => {
+    if (!user?.id) return;
+
+    const { data, error } = await supabase
+      .from('chat_history')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error loading chat history:', error);
+      return;
+    }
+
+    if (data) {
+      const messages: ChatMessage[] = data.map((msg) => ({
+        id: msg.id,
+        user_id: msg.user_id,
+        role: msg.role as 'user' | 'assistant',
+        message: msg.message,
+        timestamp: msg.created_at,
+      }));
+      setChatHistory(messages);
+    }
+  };
+
+  const saveChatMessage = async (role: 'user' | 'assistant', message: string) => {
+    if (!user?.id) return null;
+
+    const { data, error } = await supabase
+      .from('chat_history')
+      .insert({
+        user_id: user.id,
+        role,
+        message,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error saving chat message:', error);
+      return null;
+    }
+
+    return data;
+  };
+
+  const incrementLightPoints = async () => {
+    if (!user?.id) return;
+
+    const { data, error } = await supabase.rpc('increment_light_points', {
+      _user_id: user.id,
+      _amount: 1,
+    });
+
+    if (!error && data !== null) {
+      updateLightPoints(data);
+    }
+  };
 
   const handleSendMessage = async (message: string) => {
+    // Add user message to UI immediately
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
-      user_id: 'local',
+      user_id: user?.id || 'local',
       role: 'user',
       message,
       timestamp: new Date().toISOString(),
     };
     addChatMessage(userMessage);
     setIsLoading(true);
+    setStreamingContent('');
 
-    // Simulate AI response
-    await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 1000));
+    // Save user message to database
+    if (isAuthenticated) {
+      await saveChatMessage('user', message);
+    }
 
-    const aiResponse: ChatMessage = {
-      id: (Date.now() + 1).toString(),
-      user_id: 'angel-ai',
-      role: 'assistant',
-      message: ANGEL_AI_RESPONSES[Math.floor(Math.random() * ANGEL_AI_RESPONSES.length)],
-      timestamp: new Date().toISOString(),
-    };
-    addChatMessage(aiResponse);
-    addLightPoints(1);
+    try {
+      // Prepare messages for API
+      const apiMessages = [
+        ...chatHistory.map((msg) => ({
+          role: msg.role,
+          content: msg.message,
+        })),
+        { role: 'user', content: message },
+      ];
+
+      const response = await fetch(CHAT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ messages: apiMessages }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to get AI response');
+      }
+
+      if (!response.body) {
+        throw new Error('No response body');
+      }
+
+      // Stream the response
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = '';
+      let fullContent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (line.startsWith(':') || line.trim() === '') continue;
+          if (!line.startsWith('data: ')) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') break;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) {
+              fullContent += content;
+              setStreamingContent(fullContent);
+            }
+          } catch {
+            textBuffer = line + '\n' + textBuffer;
+            break;
+          }
+        }
+      }
+
+      // Add AI response to chat history
+      const aiMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        user_id: 'angel-ai',
+        role: 'assistant',
+        message: fullContent,
+        timestamp: new Date().toISOString(),
+      };
+      addChatMessage(aiMessage);
+      setStreamingContent('');
+
+      // Save AI message to database and increment light points
+      if (isAuthenticated) {
+        await saveChatMessage('assistant', fullContent);
+        await incrementLightPoints();
+      }
+    } catch (error) {
+      console.error('Chat error:', error);
+      toast({
+        title: 'Lỗi',
+        description: error instanceof Error ? error.message : 'Không thể kết nối với ANGEL AI',
+        variant: 'destructive',
+      });
+    }
+
     setIsLoading(false);
+  };
+
+  const handleClearHistory = async () => {
+    if (isAuthenticated && user?.id) {
+      const { error } = await supabase
+        .from('chat_history')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error clearing chat history:', error);
+      }
+    }
+    clearChatHistory();
   };
 
   return (
@@ -81,7 +253,7 @@ export default function Chat() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={clearChatHistory}
+                onClick={handleClearHistory}
                 className="text-muted-foreground hover:text-destructive"
               >
                 <Trash2 className="w-4 h-4 mr-1" />
@@ -94,7 +266,7 @@ export default function Chat() {
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto px-4 py-6">
           <div className="container mx-auto max-w-3xl space-y-6">
-            {chatHistory.length === 0 ? (
+            {chatHistory.length === 0 && !streamingContent ? (
               <div className="text-center py-12">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -122,7 +294,18 @@ export default function Chat() {
                 {chatHistory.map((message) => (
                   <ChatBubble key={message.id} message={message} />
                 ))}
-                {isLoading && (
+                {streamingContent && (
+                  <ChatBubble
+                    message={{
+                      id: 'streaming',
+                      user_id: 'angel-ai',
+                      role: 'assistant',
+                      message: streamingContent,
+                      timestamp: new Date().toISOString(),
+                    }}
+                  />
+                )}
+                {isLoading && !streamingContent && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
