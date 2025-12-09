@@ -5,8 +5,10 @@ import { Layout } from '@/components/layout/Layout';
 import { ChatBubble } from '@/components/chat/ChatBubble';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { SuggestedQuestions } from '@/components/chat/SuggestedQuestions';
+import { GuestLimitModal } from '@/components/chat/GuestLimitModal';
 import { Button } from '@/components/ui/button';
 import { useUserStore } from '@/stores/userStore';
+import { useGuestMessageLimit } from '@/hooks/useGuestMessageLimit';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { ChatMessage } from '@/types';
@@ -17,6 +19,7 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/angel-ai`;
 export default function Chat() {
   const [isLoading, setIsLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
+  const [showLimitModal, setShowLimitModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { 
     chatHistory, 
@@ -28,6 +31,14 @@ export default function Chat() {
     user 
   } = useUserStore();
   const { toast } = useToast();
+  const { canSendMessage, remainingMessages, limit, incrementMessageCount, resetMessageCount } = useGuestMessageLimit();
+
+  // Reset guest message count when user logs in
+  useEffect(() => {
+    if (isAuthenticated) {
+      resetMessageCount();
+    }
+  }, [isAuthenticated]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -105,6 +116,15 @@ export default function Chat() {
   };
 
   const handleSendMessage = async (message: string) => {
+    // Check guest message limit
+    if (!isAuthenticated) {
+      if (!canSendMessage) {
+        setShowLimitModal(true);
+        return;
+      }
+      incrementMessageCount();
+    }
+
     // Add user message to UI immediately
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -344,12 +364,22 @@ export default function Chat() {
           <div className="container mx-auto max-w-3xl">
             {!isAuthenticated && (
               <p className="text-xs text-center text-muted-foreground mb-2">
-                Đăng nhập để lưu lịch sử chat và tích lũy Light Points
+                {canSendMessage 
+                  ? `Còn ${remainingMessages}/${limit} tin nhắn miễn phí • Đăng nhập để chat không giới hạn`
+                  : 'Đã hết tin nhắn miễn phí • Vui lòng đăng nhập để tiếp tục'
+                }
               </p>
             )}
-            <ChatInput onSend={handleSendMessage} isLoading={isLoading} />
+            <ChatInput 
+              onSend={handleSendMessage} 
+              isLoading={isLoading} 
+              disabled={!isAuthenticated && !canSendMessage}
+            />
           </div>
         </div>
+
+        {/* Guest Limit Modal */}
+        <GuestLimitModal open={showLimitModal} onOpenChange={setShowLimitModal} />
       </div>
     </Layout>
   );
