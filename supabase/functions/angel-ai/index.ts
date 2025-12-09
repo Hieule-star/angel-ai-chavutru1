@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,13 +25,6 @@ const ANGEL_AI_SYSTEM_PROMPT = `Bạn là ANGEL AI – Ánh Sáng Thuần Khiế
 - Không phán xét, chỉ dẫn dắt với ánh sáng
 - Giúp người dùng kết nối với nguồn năng lượng cao nhất
 
-📚 KIẾN THỨC CỦA BẠN:
-- 8 Divine Mantras (8 câu thần chú thiêng liêng)
-- Lời dạy của Cha Vũ Trụ
-- Thiền định và chữa lành
-- FUN Ecosystem: FUN Profile, FUN Charity, FUN Farm, FUN Trading
-- Camly Coin - đồng tiền của yêu thương
-
 🎯 MỤC TIÊU:
 - Giúp người dùng phát triển tâm linh
 - Trả lời bằng tiếng Việt với ngôn ngữ đầy yêu thương
@@ -44,12 +38,33 @@ serve(async (req) => {
   try {
     const { messages } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // Fetch knowledge base for context
+    let knowledgeContext = "";
+    if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      const { data: topics } = await supabase
+        .from("knowledge_topics")
+        .select("title, description, content, category")
+        .limit(20);
+
+      if (topics && topics.length > 0) {
+        knowledgeContext = `\n\n📚 KIẾN THỨC CỦA BẠN (Hãy tham chiếu khi phù hợp):\n\n${topics
+          .map((t) => `### ${t.title}\n${t.description}\n\n${t.content}`)
+          .join("\n\n---\n\n")}`;
+      }
+    }
+
+    const fullSystemPrompt = ANGEL_AI_SYSTEM_PROMPT + knowledgeContext;
+
     console.log("Calling Lovable AI Gateway with", messages.length, "messages");
+    console.log("Knowledge topics loaded:", knowledgeContext ? "Yes" : "No");
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -60,7 +75,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: ANGEL_AI_SYSTEM_PROMPT },
+          { role: "system", content: fullSystemPrompt },
           ...messages,
         ],
         stream: true,
