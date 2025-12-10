@@ -1,18 +1,20 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, MessageCircle } from 'lucide-react';
+import { Search, X, MessageCircle, Loader2 } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { KnowledgeCard } from '@/components/knowledge/KnowledgeCard';
 import { Button } from '@/components/ui/button';
-import { knowledgeTopics, suggestedQuestions } from '@/data/knowledge';
+import { useKnowledgeTopics } from '@/hooks/useKnowledgeTopics';
 import type { KnowledgeTopic } from '@/types';
 import { Link } from 'react-router-dom';
 
 export default function Knowledge() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTopic, setSelectedTopic] = useState<KnowledgeTopic | null>(null);
+  
+  const { data: topics = [], isLoading, error } = useKnowledgeTopics();
 
-  const filteredTopics = knowledgeTopics.filter(
+  const filteredTopics = topics.filter(
     (topic) =>
       topic.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       topic.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -56,19 +58,46 @@ export default function Knowledge() {
             </div>
           </motion.div>
 
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex flex-col items-center justify-center py-16">
+              <Loader2 className="w-8 h-8 text-angel-gold animate-spin mb-4" />
+              <p className="text-muted-foreground">Đang tải kiến thức...</p>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div className="text-center py-16">
+              <p className="text-destructive mb-2">Không thể tải dữ liệu</p>
+              <p className="text-muted-foreground text-sm">Vui lòng thử lại sau</p>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!isLoading && !error && filteredTopics.length === 0 && (
+            <div className="text-center py-16">
+              <p className="text-muted-foreground">
+                {searchQuery ? 'Không tìm thấy chủ đề phù hợp' : 'Chưa có chủ đề nào'}
+              </p>
+            </div>
+          )}
+
           {/* Topics Grid */}
-          <div className="space-y-4 mb-12">
-            {filteredTopics.map((topic, index) => (
-              <motion.div
-                key={topic.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <KnowledgeCard topic={topic} onClick={() => setSelectedTopic(topic)} />
-              </motion.div>
-            ))}
-          </div>
+          {!isLoading && !error && filteredTopics.length > 0 && (
+            <div className="space-y-4 mb-12">
+              {filteredTopics.map((topic, index) => (
+                <motion.div
+                  key={topic.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                >
+                  <KnowledgeCard topic={topic} onClick={() => setSelectedTopic(topic)} />
+                </motion.div>
+              ))}
+            </div>
+          )}
 
           {/* Suggested Questions Section */}
           <motion.div
