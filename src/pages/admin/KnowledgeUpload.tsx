@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Upload, FileText, Trash2, Save, Loader2, CheckCircle, Plus } from 'lucide-react';
-import { Layout } from '@/components/layout/Layout';
+import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { supabase } from '@/integrations/supabase/client';
 
 interface TopicEntry {
@@ -19,7 +18,6 @@ interface TopicEntry {
 }
 
 export default function KnowledgeUpload() {
-  const { isAdmin, loading: adminLoading } = useAdminCheck();
   const [topics, setTopics] = useState<TopicEntry[]>([]);
   const [saving, setSaving] = useState(false);
   const [category] = useState('Bé Ly dẫn thiền');
@@ -134,25 +132,11 @@ export default function KnowledgeUpload() {
     }
   };
 
-  if (adminLoading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-angel-gold" />
-        </div>
-      </Layout>
-    );
-  }
-
-  if (!isAdmin) {
-    return null;
-  }
-
   const pendingCount = topics.filter(t => t.status === 'pending' && t.title && t.content).length;
   const savedCount = topics.filter(t => t.status === 'saved').length;
 
   return (
-    <Layout>
+    <AdminLayout>
       <div className="max-w-4xl mx-auto px-4 py-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -308,6 +292,6 @@ export default function KnowledgeUpload() {
           )}
         </motion.div>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 }
