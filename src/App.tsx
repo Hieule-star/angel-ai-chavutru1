@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import Wallet from "./pages/Wallet";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import KnowledgeUpload from "./pages/admin/KnowledgeUpload";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ function AppContent() {
       <Route path="/login" element={<Login />} />
       <Route path="/wallet" element={<Wallet />} />
       <Route path="/settings" element={<Settings />} />
+      <Route path="/admin/knowledge" element={<KnowledgeUpload />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
