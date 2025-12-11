@@ -1,31 +1,35 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useUserStore } from '@/stores/userStore';
 
 export function useAdminCheck() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useUserStore();
 
   useEffect(() => {
     async function checkAdminRole() {
-      if (!isAuthenticated || !user) {
+      // Get session directly from Supabase to avoid race condition with store
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      
+      if (!currentSession) {
         setLoading(false);
         navigate('/login');
         return;
       }
 
+      const userId = currentSession.user.id;
+
       try {
         const { data, error } = await supabase.rpc('has_role', {
-          _user_id: user.id,
+          _user_id: userId,
           _role: 'admin',
         });
 
         if (error) {
           console.error('Error checking admin role:', error);
           setIsAdmin(false);
+          navigate('/');
         } else {
           setIsAdmin(data === true);
           if (!data) {
@@ -42,7 +46,7 @@ export function useAdminCheck() {
     }
 
     checkAdminRole();
-  }, [isAuthenticated, user, navigate]);
+  }, [navigate]);
 
   return { isAdmin, loading };
 }
