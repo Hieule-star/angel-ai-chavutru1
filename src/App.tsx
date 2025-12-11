@@ -12,7 +12,12 @@ import Login from "./pages/Login";
 import Wallet from "./pages/Wallet";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 import KnowledgeUpload from "./pages/admin/KnowledgeUpload";
+import UserManagement from "./pages/admin/UserManagement";
+import KnowledgeList from "./pages/admin/KnowledgeList";
+import ChatAnalytics from "./pages/admin/ChatAnalytics";
+import RoleManagement from "./pages/admin/RoleManagement";
 
 const queryClient = new QueryClient();
 
@@ -39,7 +44,13 @@ function AppContent() {
       <Route path="/login" element={<Login />} />
       <Route path="/wallet" element={<Wallet />} />
       <Route path="/settings" element={<Settings />} />
+      {/* Admin Routes */}
+      <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/admin/knowledge" element={<KnowledgeUpload />} />
+      <Route path="/admin/users" element={<UserManagement />} />
+      <Route path="/admin/knowledge-list" element={<KnowledgeList />} />
+      <Route path="/admin/chat" element={<ChatAnalytics />} />
+      <Route path="/admin/roles" element={<RoleManagement />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
