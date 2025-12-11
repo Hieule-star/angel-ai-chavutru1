@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, FileText, Trash2, Save, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, FileText, Trash2, Save, Loader2, CheckCircle, Plus } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -9,136 +9,86 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { supabase } from '@/integrations/supabase/client';
-import * as pdfjsLib from 'pdfjs-dist';
 
-// Set worker source for PDF.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-
-interface ParsedTopic {
+interface TopicEntry {
   id: string;
-  fileName: string;
   title: string;
   description: string;
   content: string;
-  status: 'pending' | 'saved' | 'error';
+  status: 'pending' | 'saved';
 }
 
 export default function KnowledgeUpload() {
   const { isAdmin, loading: adminLoading } = useAdminCheck();
-  const [files, setFiles] = useState<File[]>([]);
-  const [parsedTopics, setParsedTopics] = useState<ParsedTopic[]>([]);
-  const [parsing, setParsing] = useState(false);
+  const [topics, setTopics] = useState<TopicEntry[]>([]);
   const [saving, setSaving] = useState(false);
   const [category] = useState('Bé Ly dẫn thiền');
   const { toast } = useToast();
 
-  const extractTextFromPdf = async (file: File): Promise<string> => {
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let fullText = '';
-    
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(' ');
-      fullText += pageText + '\n\n';
-    }
-    
-    return fullText;
+  const addNewTopic = () => {
+    setTopics(prev => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        title: '',
+        description: '',
+        content: '',
+        status: 'pending',
+      },
+    ]);
   };
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || []);
-    const pdfFiles = selectedFiles.filter(f => f.type === 'application/pdf');
-    
-    if (pdfFiles.length !== selectedFiles.length) {
-      toast({
-        title: 'Chỉ hỗ trợ file PDF',
-        description: 'Một số file đã bị bỏ qua vì không phải PDF',
-        variant: 'destructive',
-      });
-    }
-    
-    setFiles(prev => [...prev, ...pdfFiles]);
-  }, [toast]);
-
-  const removeFile = (index: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const parseFiles = async () => {
-    if (files.length === 0) return;
-    
-    setParsing(true);
-    const parsed: ParsedTopic[] = [];
-
-    for (const file of files) {
-      try {
-        // Extract text from PDF on client side
-        const textContent = await extractTextFromPdf(file);
-        
-        // Send to edge function for parsing
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        const response = await supabase.functions.invoke('process-knowledge-file', {
-          body: {
-            action: 'parse',
-            fileContent: textContent,
-            fileName: file.name,
-          },
-        });
-
-        if (response.error) {
-          throw new Error(response.error.message);
-        }
-
-        const { parsed: result } = response.data;
-        
-        parsed.push({
-          id: crypto.randomUUID(),
-          fileName: file.name,
-          title: result.title,
-          description: result.description,
-          content: result.content,
-          status: 'pending',
-        });
-      } catch (err: any) {
-        console.error(`Error parsing ${file.name}:`, err);
-        toast({
-          title: `Lỗi xử lý ${file.name}`,
-          description: err.message,
-          variant: 'destructive',
-        });
-      }
-    }
-
-    setParsedTopics(parsed);
-    setFiles([]);
-    setParsing(false);
-    
-    if (parsed.length > 0) {
-      toast({
-        title: 'Parse thành công!',
-        description: `Đã xử lý ${parsed.length} file. Kiểm tra và nhấn Lưu.`,
-      });
-    }
-  };
-
-  const updateTopic = (id: string, field: keyof ParsedTopic, value: string) => {
-    setParsedTopics(prev =>
+  const updateTopic = (id: string, field: keyof TopicEntry, value: string) => {
+    setTopics(prev =>
       prev.map(t => (t.id === id ? { ...t, [field]: value } : t))
     );
   };
 
   const removeTopic = (id: string) => {
-    setParsedTopics(prev => prev.filter(t => t.id !== id));
+    setTopics(prev => prev.filter(t => t.id !== id));
+  };
+
+  const handlePasteContent = async (id: string) => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        // Auto-extract title from first line if title is empty
+        const topic = topics.find(t => t.id === id);
+        if (topic && !topic.title) {
+          const lines = text.split('\n').filter(l => l.trim());
+          if (lines.length > 0) {
+            const firstLine = lines[0].trim();
+            if (firstLine.length < 200) {
+              updateTopic(id, 'title', firstLine);
+              updateTopic(id, 'content', lines.slice(1).join('\n').trim());
+              updateTopic(id, 'description', lines.slice(1).join(' ').substring(0, 150) + '...');
+              toast({ title: 'Đã paste và tự động tách tiêu đề!' });
+              return;
+            }
+          }
+        }
+        updateTopic(id, 'content', text);
+        toast({ title: 'Đã paste nội dung!' });
+      }
+    } catch (err) {
+      toast({
+        title: 'Không thể paste',
+        description: 'Vui lòng paste thủ công bằng Ctrl+V',
+        variant: 'destructive',
+      });
+    }
   };
 
   const saveTopics = async () => {
-    const pendingTopics = parsedTopics.filter(t => t.status === 'pending');
-    if (pendingTopics.length === 0) return;
+    const pendingTopics = topics.filter(t => t.status === 'pending' && t.title && t.content);
+    if (pendingTopics.length === 0) {
+      toast({
+        title: 'Không có bài để lưu',
+        description: 'Vui lòng thêm tiêu đề và nội dung',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setSaving(true);
 
@@ -149,7 +99,7 @@ export default function KnowledgeUpload() {
           category,
           topics: pendingTopics.map(t => ({
             title: t.title,
-            description: t.description,
+            description: t.description || `Bài dẫn thiền: ${t.title}`,
             content: t.content,
           })),
         },
@@ -160,8 +110,12 @@ export default function KnowledgeUpload() {
       }
 
       // Update status to saved
-      setParsedTopics(prev =>
-        prev.map(t => (t.status === 'pending' ? { ...t, status: 'saved' } : t))
+      setTopics(prev =>
+        prev.map(t => 
+          pendingTopics.some(pt => pt.id === t.id) 
+            ? { ...t, status: 'saved' } 
+            : t
+        )
       );
 
       toast({
@@ -194,6 +148,9 @@ export default function KnowledgeUpload() {
     return null;
   }
 
+  const pendingCount = topics.filter(t => t.status === 'pending' && t.title && t.content).length;
+  const savedCount = topics.filter(t => t.status === 'saved').length;
+
   return (
     <Layout>
       <div className="max-w-4xl mx-auto px-4 py-8">
@@ -207,73 +164,47 @@ export default function KnowledgeUpload() {
               Upload Knowledge Base
             </h1>
             <p className="text-muted-foreground">
-              Upload PDF files cho category "{category}"
+              Thêm bài dẫn thiền vào category "{category}"
             </p>
           </div>
 
-          {/* Upload Area */}
-          <Card className="p-6 border-dashed border-2 border-angel-gold/30 bg-angel-gold/5">
-            <div className="text-center">
-              <Upload className="w-12 h-12 text-angel-gold mx-auto mb-4" />
-              <p className="text-foreground mb-4">
-                Chọn file PDF để upload (có thể chọn nhiều file)
-              </p>
-              <Input
-                type="file"
-                accept=".pdf"
-                multiple
-                onChange={handleFileSelect}
-                className="max-w-xs mx-auto"
-              />
-            </div>
+          {/* Instructions */}
+          <Card className="p-4 bg-angel-gold/5 border-angel-gold/30">
+            <h3 className="font-semibold mb-2 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-angel-gold" />
+              Hướng dẫn
+            </h3>
+            <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+              <li>Mở file PDF bài dẫn thiền</li>
+              <li>Copy toàn bộ nội dung (Ctrl+A, Ctrl+C)</li>
+              <li>Nhấn "Thêm bài mới" bên dưới</li>
+              <li>Nhấn nút "Paste từ clipboard" hoặc paste thủ công</li>
+              <li>Kiểm tra và chỉnh sửa tiêu đề, mô tả nếu cần</li>
+              <li>Nhấn "Lưu tất cả" khi hoàn tất</li>
+            </ol>
           </Card>
 
-          {/* Selected Files */}
-          {files.length > 0 && (
-            <Card className="p-4">
-              <h3 className="font-semibold mb-3">Files đã chọn ({files.length})</h3>
-              <div className="space-y-2">
-                {files.map((file, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-angel-gold" />
-                      <span className="text-sm truncate max-w-[300px]">{file.name}</span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeFile(index)}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-              <Button
-                onClick={parseFiles}
-                disabled={parsing}
-                className="mt-4 w-full bg-angel-gold hover:bg-angel-gold/90"
-              >
-                {parsing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Đang xử lý...
-                  </>
-                ) : (
-                  'Parse & Preview'
-                )}
-              </Button>
-            </Card>
-          )}
+          {/* Add New Button */}
+          <div className="flex justify-center">
+            <Button
+              onClick={addNewTopic}
+              className="bg-angel-gold hover:bg-angel-gold/90"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Thêm bài mới
+            </Button>
+          </div>
 
-          {/* Parsed Topics Preview */}
-          {parsedTopics.length > 0 && (
+          {/* Topics List */}
+          {topics.length > 0 && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold">Preview ({parsedTopics.length} bài)</h3>
+                <h3 className="font-semibold">
+                  Danh sách bài ({topics.length} bài, {savedCount} đã lưu)
+                </h3>
                 <Button
                   onClick={saveTopics}
-                  disabled={saving || parsedTopics.every(t => t.status === 'saved')}
+                  disabled={saving || pendingCount === 0}
                   className="bg-green-600 hover:bg-green-700"
                 >
                   {saving ? (
@@ -284,24 +215,26 @@ export default function KnowledgeUpload() {
                   ) : (
                     <>
                       <Save className="w-4 h-4 mr-2" />
-                      Lưu tất cả
+                      Lưu tất cả ({pendingCount})
                     </>
                   )}
                 </Button>
               </div>
 
-              {parsedTopics.map((topic) => (
+              {topics.map((topic, index) => (
                 <Card key={topic.id} className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
                       {topic.status === 'saved' ? (
                         <CheckCircle className="w-5 h-5 text-green-500" />
-                      ) : topic.status === 'error' ? (
-                        <AlertCircle className="w-5 h-5 text-destructive" />
                       ) : (
-                        <FileText className="w-5 h-5 text-angel-gold" />
+                        <span className="w-6 h-6 rounded-full bg-angel-gold/20 text-angel-gold flex items-center justify-center text-sm font-semibold">
+                          {index + 1}
+                        </span>
                       )}
-                      <span className="text-xs text-muted-foreground">{topic.fileName}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {topic.status === 'saved' ? 'Đã lưu' : 'Chưa lưu'}
+                      </span>
                     </div>
                     <Button
                       variant="ghost"
@@ -315,37 +248,63 @@ export default function KnowledgeUpload() {
 
                   <div className="space-y-3">
                     <div>
-                      <label className="text-xs text-muted-foreground">Tiêu đề</label>
+                      <label className="text-xs text-muted-foreground">Tiêu đề *</label>
                       <Input
                         value={topic.title}
                         onChange={(e) => updateTopic(topic.id, 'title', e.target.value)}
                         disabled={topic.status === 'saved'}
+                        placeholder="Nhập tiêu đề bài dẫn thiền"
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-muted-foreground">Mô tả</label>
+                      <label className="text-xs text-muted-foreground">Mô tả ngắn</label>
                       <Input
                         value={topic.description}
                         onChange={(e) => updateTopic(topic.id, 'description', e.target.value)}
                         disabled={topic.status === 'saved'}
+                        placeholder="Mô tả ngắn về bài thiền (tự động tạo nếu bỏ trống)"
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-muted-foreground">
-                        Nội dung ({topic.content.length} ký tự)
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs text-muted-foreground">
+                          Nội dung * ({topic.content.length} ký tự)
+                        </label>
+                        {topic.status !== 'saved' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePasteContent(topic.id)}
+                            className="h-6 text-xs"
+                          >
+                            <Upload className="w-3 h-3 mr-1" />
+                            Paste từ clipboard
+                          </Button>
+                        )}
+                      </div>
                       <Textarea
                         value={topic.content}
                         onChange={(e) => updateTopic(topic.id, 'content', e.target.value)}
                         disabled={topic.status === 'saved'}
-                        rows={6}
+                        rows={8}
                         className="text-xs"
+                        placeholder="Paste nội dung bài dẫn thiền vào đây..."
                       />
                     </div>
                   </div>
                 </Card>
               ))}
             </div>
+          )}
+
+          {/* Empty State */}
+          {topics.length === 0 && (
+            <Card className="p-8 text-center border-dashed border-2">
+              <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                Chưa có bài nào. Nhấn "Thêm bài mới" để bắt đầu.
+              </p>
+            </Card>
           )}
         </motion.div>
       </div>
