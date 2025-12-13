@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { KNOWLEDGE_CATEGORIES } from '@/data/categories';
 
 interface TopicEntry {
   id: string;
@@ -20,8 +22,10 @@ interface TopicEntry {
 export default function KnowledgeUpload() {
   const [topics, setTopics] = useState<TopicEntry[]>([]);
   const [saving, setSaving] = useState(false);
-  const [category] = useState('Bé Ly dẫn thiền');
+  const [selectedCategory, setSelectedCategory] = useState(KNOWLEDGE_CATEGORIES[3].name);
   const { toast } = useToast();
+  
+  const currentCategory = KNOWLEDGE_CATEGORIES.find(c => c.name === selectedCategory);
 
   const addNewTopic = () => {
     setTopics(prev => [
@@ -94,10 +98,10 @@ export default function KnowledgeUpload() {
       const response = await supabase.functions.invoke('process-knowledge-file', {
         body: {
           action: 'save',
-          category,
+          category: selectedCategory,
           topics: pendingTopics.map(t => ({
             title: t.title,
-            description: t.description || `Bài dẫn thiền: ${t.title}`,
+            description: t.description || `${currentCategory?.icon || '📚'} ${t.title}`,
             content: t.content,
           })),
         },
@@ -148,7 +152,7 @@ export default function KnowledgeUpload() {
               Upload Knowledge Base
             </h1>
             <p className="text-muted-foreground">
-              Thêm bài dẫn thiền vào category "{category}"
+              Upload nội dung vào Knowledge Base
             </p>
           </div>
 
@@ -159,13 +163,41 @@ export default function KnowledgeUpload() {
               Hướng dẫn
             </h3>
             <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-              <li>Mở file PDF bài dẫn thiền</li>
+              <li>Chọn category phù hợp bên dưới</li>
+              <li>Mở file PDF/nội dung cần upload</li>
               <li>Copy toàn bộ nội dung (Ctrl+A, Ctrl+C)</li>
               <li>Nhấn "Thêm bài mới" bên dưới</li>
               <li>Nhấn nút "Paste từ clipboard" hoặc paste thủ công</li>
               <li>Kiểm tra và chỉnh sửa tiêu đề, mô tả nếu cần</li>
               <li>Nhấn "Lưu tất cả" khi hoàn tất</li>
             </ol>
+          </Card>
+
+          {/* Category Selection */}
+          <Card className="p-4">
+            <label className="block text-sm font-medium mb-2">
+              📂 Chọn Category để upload:
+            </label>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="w-full bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-background">
+                {KNOWLEDGE_CATEGORIES.map(cat => (
+                  <SelectItem key={cat.id} value={cat.name}>
+                    <span className="flex items-center gap-2">
+                      <span>{cat.icon}</span>
+                      <span>{cat.name}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {currentCategory && (
+              <p className="text-xs text-muted-foreground mt-2">
+                {currentCategory.description}
+              </p>
+            )}
           </Card>
 
           {/* Add New Button */}
