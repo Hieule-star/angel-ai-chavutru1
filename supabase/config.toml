@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.process-knowledge-file]
 verify_jwt = false
+
+[functions.angel-ai-public]
+verify_jwt = false
+
+[functions.api-key-management]
+verify_jwt = false

@@ -18,6 +18,9 @@ import UserManagement from "./pages/admin/UserManagement";
 import KnowledgeList from "./pages/admin/KnowledgeList";
 import ChatAnalytics from "./pages/admin/ChatAnalytics";
 import RoleManagement from "./pages/admin/RoleManagement";
+import ApiKeys from "./pages/admin/ApiKeys";
+import ApiAnalytics from "./pages/admin/ApiAnalytics";
+import Developers from "./pages/Developers";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +54,9 @@ function AppContent() {
       <Route path="/admin/knowledge-list" element={<KnowledgeList />} />
       <Route path="/admin/chat" element={<ChatAnalytics />} />
       <Route path="/admin/roles" element={<RoleManagement />} />
+      <Route path="/admin/api-keys" element={<ApiKeys />} />
+      <Route path="/admin/api-analytics" element={<ApiAnalytics />} />
+      <Route path="/developers" element={<Developers />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
