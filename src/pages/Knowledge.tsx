@@ -1,67 +1,126 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, MessageCircle, Loader2 } from 'lucide-react';
+import { Search, X, MessageCircle, Loader2, Settings } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { KnowledgeCard } from '@/components/knowledge/KnowledgeCard';
+import { CategoryTabs } from '@/components/knowledge/CategoryTabs';
+import { CategoryHeader } from '@/components/knowledge/CategoryHeader';
 import { Button } from '@/components/ui/button';
 import { useKnowledgeTopics } from '@/hooks/useKnowledgeTopics';
+import { useAdminCheck } from '@/hooks/useAdminCheck';
 import type { KnowledgeTopic } from '@/types';
 import { Link } from 'react-router-dom';
 
 export default function Knowledge() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<KnowledgeTopic | null>(null);
   
   const { data: topics = [], isLoading, error } = useKnowledgeTopics();
+  const { isAdmin } = useAdminCheck();
 
-  const filteredTopics = topics.filter(
-    (topic) =>
-      topic.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      topic.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      topic.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Count topics per category
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    topics.forEach(topic => {
+      const cat = topic.category || 'Uncategorized';
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+    return counts;
+  }, [topics]);
+
+  // Filter topics by search and category
+  const filteredTopics = useMemo(() => {
+    return topics.filter((topic) => {
+      const matchesSearch = !searchQuery || 
+        topic.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        topic.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        topic.category.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesCategory = !selectedCategory || 
+        topic.category.toLowerCase() === selectedCategory.toLowerCase();
+      
+      return matchesSearch && matchesCategory;
+    });
+  }, [topics, searchQuery, selectedCategory]);
+
+  // Group topics by category for display
+  const groupedTopics = useMemo(() => {
+    const groups: Record<string, KnowledgeTopic[]> = {};
+    filteredTopics.forEach(topic => {
+      const cat = topic.category || 'Uncategorized';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(topic);
+    });
+    return groups;
+  }, [filteredTopics]);
 
   return (
     <Layout>
-      <div className="min-h-screen py-8 px-4">
-        <div className="container mx-auto max-w-4xl">
+      <div className="min-h-screen bg-gradient-to-b from-rose-50/60 via-orange-50/40 to-amber-50/30 py-8 px-4">
+        <div className="container mx-auto max-w-6xl">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-10"
+            className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8"
           >
-            <h1 className="text-3xl md:text-4xl font-bold mb-3">
-              <span className="text-gradient-divine">Knowledge Base</span>
-            </h1>
-            <p className="text-muted-foreground max-w-xl mx-auto">
-              Kho kiến thức về Divine Mantras, lời dạy Cha Vũ Trụ và FUN Ecosystem
-            </p>
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold mb-2">
+                <span className="text-gradient-divine">Knowledge Base</span>
+              </h1>
+              <p className="text-muted-foreground">
+                Kho kiến thức về Divine Mantras, lời dạy Cha Vũ Trụ và FUN Ecosystem
+              </p>
+            </div>
+            
+            {isAdmin && (
+              <Link to="/admin/knowledge">
+                <Button variant="outline" className="gap-2">
+                  <Settings className="w-4 h-4" />
+                  Manage Knowledge
+                </Button>
+              </Link>
+            )}
           </motion.div>
 
-          {/* Search */}
+          {/* Search Bar */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="mb-8"
+            className="mb-6"
           >
-            <div className="relative max-w-md mx-auto">
+            <div className="relative max-w-2xl mx-auto">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Tìm kiếm chủ đề..."
+                placeholder="Search for wisdom..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-white/80 backdrop-blur-sm border border-angel-gold/20 rounded-xl focus:outline-none focus:border-angel-gold/50 focus:shadow-divine transition-all"
+                className="w-full pl-12 pr-4 py-3.5 bg-white/90 backdrop-blur-sm border border-border/50 rounded-2xl focus:outline-none focus:border-primary/50 focus:shadow-lg transition-all text-foreground placeholder:text-muted-foreground"
               />
             </div>
+          </motion.div>
+
+          {/* Category Tabs */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="mb-8"
+          >
+            <CategoryTabs
+              selectedCategory={selectedCategory}
+              onSelectCategory={setSelectedCategory}
+              categoryCounts={categoryCounts}
+            />
           </motion.div>
 
           {/* Loading State */}
           {isLoading && (
             <div className="flex flex-col items-center justify-center py-16">
-              <Loader2 className="w-8 h-8 text-angel-gold animate-spin mb-4" />
+              <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
               <p className="text-muted-foreground">Đang tải kiến thức...</p>
             </div>
           )}
@@ -83,35 +142,55 @@ export default function Knowledge() {
             </div>
           )}
 
-          {/* Topics Grid */}
+          {/* Topics Grid - Grouped by Category */}
           {!isLoading && !error && filteredTopics.length > 0 && (
-            <div className="space-y-4 mb-12">
-              {filteredTopics.map((topic, index) => (
+            <div className="space-y-10 mb-12">
+              {Object.entries(groupedTopics).map(([category, categoryTopics], groupIndex) => (
                 <motion.div
-                  key={topic.id}
+                  key={category}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
+                  transition={{ delay: groupIndex * 0.1 }}
                 >
-                  <KnowledgeCard topic={topic} onClick={() => setSelectedTopic(topic)} />
+                  {/* Category Header - only show when viewing all */}
+                  {!selectedCategory && (
+                    <CategoryHeader 
+                      categoryName={category} 
+                      topicCount={categoryTopics.length} 
+                    />
+                  )}
+                  
+                  {/* Topics Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {categoryTopics.map((topic, index) => (
+                      <motion.div
+                        key={topic.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.03 }}
+                      >
+                        <KnowledgeCard topic={topic} onClick={() => setSelectedTopic(topic)} />
+                      </motion.div>
+                    ))}
+                  </div>
                 </motion.div>
               ))}
             </div>
           )}
 
-          {/* Suggested Questions Section */}
+          {/* Chat CTA Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="text-center"
+            className="text-center py-8 bg-white/60 rounded-3xl border border-border/30"
           >
-            <h2 className="text-xl font-semibold mb-4">Hỏi ANGEL AI</h2>
-            <p className="text-muted-foreground text-sm mb-6">
-              Bạn có thể hỏi ANGEL AI trực tiếp về các chủ đề này
+            <h2 className="text-xl font-semibold mb-3">Hỏi ANGEL AI</h2>
+            <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
+              Bạn có thể hỏi ANGEL AI trực tiếp về các chủ đề này để được hướng dẫn chi tiết hơn
             </p>
             <Link to="/chat">
-              <Button variant="divine" size="lg">
+              <Button variant="divine" size="lg" className="gap-2">
                 <MessageCircle className="w-5 h-5" />
                 Bắt đầu Chat
               </Button>
@@ -134,17 +213,17 @@ export default function Knowledge() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white rounded-2xl shadow-divine max-w-lg w-full max-h-[80vh] overflow-hidden"
+              className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-6 border-b border-angel-gold/10">
+              <div className="p-6 border-b border-border/50">
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-angel-gold/20 flex items-center justify-center text-2xl">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-3xl">
                       {selectedTopic.icon}
                     </div>
                     <div>
-                      <span className="text-xs px-2 py-0.5 bg-angel-blue/50 text-accent-foreground rounded-full">
+                      <span className="text-xs px-2 py-0.5 bg-muted text-muted-foreground rounded-full">
                         {selectedTopic.category}
                       </span>
                       <h3 className="font-semibold text-lg mt-1">{selectedTopic.title}</h3>
@@ -162,15 +241,15 @@ export default function Knowledge() {
               <div className="p-6 overflow-y-auto max-h-[50vh]">
                 <p className="text-muted-foreground mb-4">{selectedTopic.description}</p>
                 <div className="prose prose-sm">
-                  <p>{selectedTopic.content}</p>
+                  <p className="whitespace-pre-wrap">{selectedTopic.content}</p>
                 </div>
               </div>
-              <div className="p-4 border-t border-angel-gold/10 bg-angel-gold/5">
+              <div className="p-4 border-t border-border/50 bg-muted/30">
                 <p className="text-sm text-center text-muted-foreground mb-3">
                   Muốn tìm hiểu thêm?
                 </p>
                 <Link to="/chat" className="block">
-                  <Button variant="divine" className="w-full">
+                  <Button variant="divine" className="w-full gap-2">
                     <MessageCircle className="w-4 h-4" />
                     Hỏi ANGEL AI về {selectedTopic.title}
                   </Button>
