@@ -7,7 +7,9 @@ import {
   MessageSquare, 
   Shield,
   ChevronLeft,
-  Menu
+  Menu,
+  Key,
+  BarChart3
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -20,6 +22,8 @@ const adminNavItems = [
   { title: 'Knowledge List', url: '/admin/knowledge-list', icon: List },
   { title: 'Chat Analytics', url: '/admin/chat', icon: MessageSquare },
   { title: 'Roles', url: '/admin/roles', icon: Shield },
+  { title: 'API Keys', url: '/admin/api-keys', icon: Key },
+  { title: 'API Analytics', url: '/admin/api-analytics', icon: BarChart3 },
 ];
 
 export function AdminSidebar() {
