@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion';
-import { ChevronRight } from 'lucide-react';
 import type { KnowledgeTopic } from '@/types';
 
 interface KnowledgeCardProps {
@@ -10,30 +9,25 @@ interface KnowledgeCardProps {
 export function KnowledgeCard({ topic, onClick }: KnowledgeCardProps) {
   return (
     <motion.div
-      whileHover={{ scale: 1.02, y: -4 }}
+      whileHover={{ scale: 1.03, y: -2 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className="p-5 bg-white/70 hover:bg-white/90 backdrop-blur-sm border border-angel-gold/20 hover:border-angel-gold/40 rounded-2xl cursor-pointer transition-all shadow-soft hover:shadow-divine group"
+      className="p-4 bg-white hover:bg-white/95 rounded-2xl cursor-pointer transition-all shadow-sm hover:shadow-md border border-border/30 hover:border-primary/20 group flex flex-col items-center text-center"
     >
-      <div className="flex items-start gap-4">
-        <div className="w-12 h-12 rounded-xl bg-angel-gold/20 flex items-center justify-center text-2xl">
-          {topic.icon}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs px-2 py-0.5 bg-angel-blue/50 text-accent-foreground rounded-full">
-              {topic.category}
-            </span>
-          </div>
-          <h3 className="font-semibold text-foreground mb-1 group-hover:text-gradient-divine transition-all">
-            {topic.title}
-          </h3>
-          <p className="text-sm text-muted-foreground line-clamp-2">
-            {topic.description}
-          </p>
-        </div>
-        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+      {/* Large Icon */}
+      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center text-3xl mb-3 group-hover:scale-110 transition-transform">
+        {topic.icon}
       </div>
+      
+      {/* Title */}
+      <h3 className="font-semibold text-foreground mb-1.5 line-clamp-2 group-hover:text-primary transition-colors text-sm">
+        {topic.title}
+      </h3>
+      
+      {/* Description */}
+      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+        {topic.description}
+      </p>
     </motion.div>
   );
 }
