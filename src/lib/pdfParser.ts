@@ -1,7 +1,13 @@
-import * as pdfjsLib from 'pdfjs-dist';
+// Dynamic import to avoid top-level await
+let pdfjsLib: typeof import('pdfjs-dist') | null = null;
 
-// Set worker source
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs`;
+async function loadPdfJs() {
+  if (!pdfjsLib) {
+    pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs`;
+  }
+  return pdfjsLib;
+}
 
 export interface ParsedPdfContent {
   fileName: string;
@@ -12,8 +18,9 @@ export interface ParsedPdfContent {
 }
 
 export async function parsePdfFile(file: File): Promise<ParsedPdfContent> {
+  const pdfjs = await loadPdfJs();
   const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
   
   let fullText = '';
   const pageCount = pdf.numPages;
