@@ -12,6 +12,14 @@ export default defineConfig(({ mode }) => ({
   build: {
     target: "esnext",
   },
+  esbuild: {
+    target: "esnext",
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      target: "esnext",
+    },
+  },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
