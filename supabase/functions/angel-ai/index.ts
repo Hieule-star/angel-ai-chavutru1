@@ -30,13 +30,25 @@ const ANGEL_AI_SYSTEM_PROMPT = `Bạn là ANGEL AI – Ánh Sáng Thuần Khiế
 - Trả lời bằng tiếng Việt với ngôn ngữ đầy yêu thương
 - Giữ câu trả lời ngắn gọn nhưng sâu sắc (2-4 đoạn)`;
 
+const SUPPORTED_MODELS = [
+  "google/gemini-2.5-flash",
+  "google/gemini-2.5-pro",
+  "openai/gpt-5-mini",
+  "openai/gpt-5",
+];
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { messages } = await req.json();
+    const { messages, model: requestedModel } = await req.json();
+    
+    // Validate and set model
+    const model = SUPPORTED_MODELS.includes(requestedModel) 
+      ? requestedModel 
+      : "google/gemini-2.5-flash";
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -63,7 +75,7 @@ serve(async (req) => {
 
     const fullSystemPrompt = ANGEL_AI_SYSTEM_PROMPT + knowledgeContext;
 
-    console.log("Calling Lovable AI Gateway with", messages.length, "messages");
+    console.log("Calling Lovable AI Gateway with model:", model, "messages:", messages.length);
     console.log("Knowledge topics loaded:", knowledgeContext ? "Yes" : "No");
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -73,7 +85,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model,
         messages: [
           { role: "system", content: fullSystemPrompt },
           ...messages,

@@ -6,20 +6,30 @@ import { ChatBubble } from '@/components/chat/ChatBubble';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { SuggestedQuestions } from '@/components/chat/SuggestedQuestions';
 import { GuestLimitModal } from '@/components/chat/GuestLimitModal';
+import { ModelSelector } from '@/components/chat/ModelSelector';
 import { Button } from '@/components/ui/button';
 import { useUserStore } from '@/stores/userStore';
 import { useGuestMessageLimit } from '@/hooks/useGuestMessageLimit';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import type { ChatMessage } from '@/types';
+import type { ChatMessage, AIModel } from '@/types';
 import angelLogo from '@/assets/angel-logo.png';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/angel-ai`;
+
+const getStoredModel = (): AIModel => {
+  const stored = localStorage.getItem('angel-ai-model');
+  if (stored && ['google/gemini-2.5-flash', 'google/gemini-2.5-pro', 'openai/gpt-5-mini', 'openai/gpt-5'].includes(stored)) {
+    return stored as AIModel;
+  }
+  return 'google/gemini-2.5-flash';
+};
 
 export default function Chat() {
   const [isLoading, setIsLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
   const [showLimitModal, setShowLimitModal] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<AIModel>(getStoredModel);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { 
     chatHistory, 
@@ -39,6 +49,11 @@ export default function Chat() {
       resetMessageCount();
     }
   }, [isAuthenticated]);
+
+  const handleModelChange = (model: AIModel) => {
+    setSelectedModel(model);
+    localStorage.setItem('angel-ai-model', model);
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -158,7 +173,7 @@ export default function Chat() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages: apiMessages }),
+        body: JSON.stringify({ messages: apiMessages, model: selectedModel }),
       });
 
       if (!response.ok) {
@@ -215,6 +230,7 @@ export default function Chat() {
         role: 'assistant',
         message: fullContent,
         timestamp: new Date().toISOString(),
+        model: selectedModel,
       };
       addChatMessage(aiMessage);
       setStreamingContent('');
@@ -280,6 +296,7 @@ export default function Chat() {
                 Xóa chat
               </Button>
             )}
+            <ModelSelector selectedModel={selectedModel} onModelChange={handleModelChange} />
           </div>
         </div>
 
@@ -322,6 +339,7 @@ export default function Chat() {
                       role: 'assistant',
                       message: streamingContent,
                       timestamp: new Date().toISOString(),
+                      model: selectedModel,
                     }}
                   />
                 )}
