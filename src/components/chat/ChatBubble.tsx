@@ -1,13 +1,30 @@
 import { motion } from 'framer-motion';
-import type { ChatMessage } from '@/types';
+import { Zap, Sparkles, Brain, Rocket } from 'lucide-react';
+import type { ChatMessage, AIModel } from '@/types';
 import angelLogo from '@/assets/angel-logo.png';
 
 interface ChatBubbleProps {
   message: ChatMessage;
 }
 
+const getModelBadge = (model?: AIModel) => {
+  switch (model) {
+    case 'google/gemini-2.5-flash':
+      return { icon: <Zap className="w-3 h-3" />, name: 'Gemini Flash', color: 'text-blue-500' };
+    case 'google/gemini-2.5-pro':
+      return { icon: <Sparkles className="w-3 h-3" />, name: 'Gemini Pro', color: 'text-purple-500' };
+    case 'openai/gpt-5-mini':
+      return { icon: <Brain className="w-3 h-3" />, name: 'GPT-5 Mini', color: 'text-green-500' };
+    case 'openai/gpt-5':
+      return { icon: <Rocket className="w-3 h-3" />, name: 'GPT-5', color: 'text-amber-500' };
+    default:
+      return null;
+  }
+};
+
 export function ChatBubble({ message }: ChatBubbleProps) {
   const isUser = message.role === 'user';
+  const modelBadge = !isUser ? getModelBadge(message.model) : null;
 
   return (
     <motion.div
@@ -42,7 +59,15 @@ export function ChatBubble({ message }: ChatBubbleProps) {
         } rounded-2xl px-4 py-3 backdrop-blur-sm`}
       >
         {!isUser && (
-          <p className="text-xs text-angel-gold font-medium mb-1">ANGEL AI ✨</p>
+          <div className="flex items-center gap-2 mb-1">
+            <p className="text-xs text-angel-gold font-medium">ANGEL AI ✨</p>
+            {modelBadge && (
+              <span className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-muted/50 ${modelBadge.color}`}>
+                {modelBadge.icon}
+                {modelBadge.name}
+              </span>
+            )}
+          </div>
         )}
         <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap">
           {message.message}
