@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.api-key-management]
 verify_jwt = false
+
+[functions.generate-chat-title]
+verify_jwt = false

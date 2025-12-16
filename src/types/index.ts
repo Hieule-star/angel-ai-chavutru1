@@ -25,6 +25,15 @@ export interface ChatMessage {
   timestamp: string;
   model?: AIModel;
   sources?: KnowledgeSource[];
+  session_id?: string;
+}
+
+export interface ChatSession {
+  id: string;
+  user_id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface KnowledgeTopic {
