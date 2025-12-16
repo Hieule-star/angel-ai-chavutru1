@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, Sparkles, Brain, Rocket, BookOpen, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { Zap, Sparkles, Brain, BookOpen, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { ChatMessage, AIModel } from '@/types';
 import angelLogo from '@/assets/angel-logo.png';
@@ -12,13 +12,13 @@ interface ChatBubbleProps {
 const getModelBadge = (model?: AIModel) => {
   switch (model) {
     case 'google/gemini-2.5-flash':
-      return { icon: <Zap className="w-3 h-3" />, name: 'Gemini Flash', color: 'text-blue-500' };
+      return { icon: <Zap className="w-3 h-3" />, name: 'Flash', color: 'text-blue-500' };
     case 'google/gemini-2.5-pro':
-      return { icon: <Sparkles className="w-3 h-3" />, name: 'Gemini Pro', color: 'text-purple-500' };
+      return { icon: <Sparkles className="w-3 h-3" />, name: 'Pro', color: 'text-purple-500' };
     case 'openai/gpt-5-mini':
       return { icon: <Brain className="w-3 h-3" />, name: 'GPT-5 Mini', color: 'text-green-500' };
     case 'openai/gpt-5':
-      return { icon: <Rocket className="w-3 h-3" />, name: 'GPT-5', color: 'text-amber-500' };
+      return { icon: <Brain className="w-3 h-3" />, name: 'GPT-5', color: 'text-amber-500' };
     default:
       return null;
   }
