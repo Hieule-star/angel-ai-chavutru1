@@ -14,19 +14,19 @@ import { useUserStore } from '@/stores/userStore';
 import { useGuestMessageLimit } from '@/hooks/useGuestMessageLimit';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import type { ChatMessage, AIModel, KnowledgeSource } from '@/types';
+import type { ChatMessage, AIModel, KnowledgeSource, SelectionMode } from '@/types';
 import angelLogo from '@/assets/angel-logo.png';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/angel-ai`;
 
 type TabType = 'chat' | 'image' | 'video';
 
-const getStoredModel = (): AIModel => {
-  const stored = localStorage.getItem('angel-ai-model');
-  if (stored && ['google/gemini-2.5-flash', 'google/gemini-2.5-pro', 'openai/gpt-5-mini', 'openai/gpt-5'].includes(stored)) {
-    return stored as AIModel;
+const getStoredMode = (): SelectionMode => {
+  const stored = localStorage.getItem('angel-ai-mode');
+  if (stored && ['auto', 'fast', 'deep'].includes(stored)) {
+    return stored as SelectionMode;
   }
-  return 'google/gemini-2.5-flash';
+  return 'auto';
 };
 
 export default function Chat() {
@@ -35,7 +35,8 @@ export default function Chat() {
   const [streamingContent, setStreamingContent] = useState('');
   const [streamingSources, setStreamingSources] = useState<KnowledgeSource[]>([]);
   const [showLimitModal, setShowLimitModal] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<AIModel>(getStoredModel);
+  const [selectedMode, setSelectedMode] = useState<SelectionMode>(getStoredMode);
+  const [currentStreamingModel, setCurrentStreamingModel] = useState<AIModel | undefined>();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { 
     chatHistory, 
@@ -56,9 +57,9 @@ export default function Chat() {
     }
   }, [isAuthenticated]);
 
-  const handleModelChange = (model: AIModel) => {
-    setSelectedModel(model);
-    localStorage.setItem('angel-ai-model', model);
+  const handleModeChange = (mode: SelectionMode) => {
+    setSelectedMode(mode);
+    localStorage.setItem('angel-ai-mode', mode);
   };
 
   const scrollToBottom = () => {
@@ -158,6 +159,7 @@ export default function Chat() {
     setIsLoading(true);
     setStreamingContent('');
     setStreamingSources([]);
+    setCurrentStreamingModel(undefined);
 
     // Save user message to database
     if (isAuthenticated) {
@@ -184,7 +186,7 @@ export default function Chat() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages: apiMessages, model: selectedModel }),
+        body: JSON.stringify({ messages: apiMessages, mode: selectedMode }),
         signal: controller.signal,
       });
 
@@ -205,6 +207,7 @@ export default function Chat() {
       let textBuffer = '';
       let fullContent = '';
       let capturedSources: KnowledgeSource[] = [];
+      let actualModel: AIModel | undefined;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -227,10 +230,16 @@ export default function Chat() {
           try {
             const parsed = JSON.parse(jsonStr);
             
-            // Check for sources metadata (sent as first event)
+            // Check for metadata (sources and actualModel sent as first event)
             if (parsed.sources && Array.isArray(parsed.sources)) {
               capturedSources = parsed.sources;
               setStreamingSources(capturedSources);
+            }
+            if (parsed.actualModel) {
+              actualModel = parsed.actualModel;
+              setCurrentStreamingModel(actualModel);
+            }
+            if (parsed.sources || parsed.actualModel) {
               continue;
             }
             
@@ -253,12 +262,13 @@ export default function Chat() {
         role: 'assistant',
         message: fullContent,
         timestamp: new Date().toISOString(),
-        model: selectedModel,
+        model: actualModel,
         sources: capturedSources.length > 0 ? capturedSources : undefined,
       };
       addChatMessage(aiMessage);
       setStreamingContent('');
       setStreamingSources([]);
+      setCurrentStreamingModel(undefined);
 
       // Save AI message to database and increment light points
       if (isAuthenticated) {
@@ -359,7 +369,7 @@ export default function Chat() {
                 </Button>
               )}
               {activeTab === 'chat' && (
-                <ModelSelector selectedModel={selectedModel} onModelChange={handleModelChange} />
+                <ModelSelector selectedMode={selectedMode} onModeChange={handleModeChange} />
               )}
             </div>
           </div>
@@ -407,7 +417,7 @@ export default function Chat() {
                           role: 'assistant',
                           message: streamingContent,
                           timestamp: new Date().toISOString(),
-                          model: selectedModel,
+                          model: currentStreamingModel,
                           sources: streamingSources.length > 0 ? streamingSources : undefined,
                         }}
                       />

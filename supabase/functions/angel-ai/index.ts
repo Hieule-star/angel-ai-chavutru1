@@ -116,6 +116,59 @@ const SUPPORTED_MODELS = [
   "openai/gpt-5",
 ];
 
+// Keywords that indicate need for deep reasoning
+const DEEP_KEYWORDS = [
+  // Philosophy & meaning
+  "triết học", "ý nghĩa cuộc sống", "vũ trụ quan", "bản chất", "ý nghĩa",
+  // Strategy & planning
+  "lập kế hoạch", "chiến lược", "phân tích", "so sánh", "đánh giá",
+  // Multi-step reasoning
+  "bước 1", "bước 2", "từng bước", "chi tiết", "giải thích kỹ",
+  // Deep analysis requests
+  "phân tích sâu", "giải thích chi tiết", "tại sao", "nguyên nhân",
+  // Complex topics
+  "kiến trúc", "hệ thống", "framework", "architecture",
+  // Spiritual depth
+  "thiền định sâu", "giác ngộ", "tâm linh sâu", "chuyển hóa"
+];
+
+type SelectionMode = 'auto' | 'fast' | 'deep';
+
+function selectModelBasedOnMode(mode: SelectionMode, message: string): string {
+  // Fast mode: always use fastest model
+  if (mode === 'fast') {
+    return "google/gemini-2.5-flash";
+  }
+  
+  // Deep mode: always use most powerful model
+  if (mode === 'deep') {
+    return "openai/gpt-5";
+  }
+  
+  // Auto mode: intelligent selection
+  const messageLength = message.length;
+  const lowerMessage = message.toLowerCase();
+  
+  // Check for deep keywords
+  const hasDeepKeywords = DEEP_KEYWORDS.some(keyword => lowerMessage.includes(keyword));
+  
+  // Short & simple questions (< 300 chars, no deep keywords)
+  if (messageLength < 300 && !hasDeepKeywords) {
+    console.log("Auto selection: SHORT & SIMPLE → google/gemini-2.5-flash");
+    return "google/gemini-2.5-flash";
+  }
+  
+  // Long or complex questions (> 1000 chars OR has deep keywords)
+  if (messageLength > 1000 || hasDeepKeywords) {
+    console.log("Auto selection: DEEP/COMPLEX → openai/gpt-5");
+    return "openai/gpt-5";
+  }
+  
+  // Medium complexity (300-1000 chars, no deep keywords)
+  console.log("Auto selection: MEDIUM → openai/gpt-5-mini");
+  return "openai/gpt-5-mini";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -142,7 +195,7 @@ serve(async (req) => {
       });
     }
 
-    const { messages, model: requestedModel } = body;
+    const { messages, mode: requestedMode } = body;
     
     // Validate messages array
     if (!messages || !Array.isArray(messages)) {
@@ -152,10 +205,18 @@ serve(async (req) => {
       });
     }
     
-    // Validate and set model
-    const model = SUPPORTED_MODELS.includes(requestedModel) 
-      ? requestedModel 
-      : "google/gemini-2.5-flash";
+    // Get last user message for auto selection
+    const lastUserMessage = messages.filter((m: any) => m.role === 'user').pop()?.content || '';
+    
+    // Validate mode and select model
+    const mode: SelectionMode = ['auto', 'fast', 'deep'].includes(requestedMode) 
+      ? requestedMode 
+      : 'auto';
+    
+    const model = selectModelBasedOnMode(mode, lastUserMessage);
+    
+    console.log(`Mode: ${mode}, Message length: ${lastUserMessage.length}, Selected model: ${model}`);
+    
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -171,8 +232,6 @@ serve(async (req) => {
     if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
       
-      // Get the last user message for keyword extraction
-      const lastUserMessage = messages.filter((m: any) => m.role === 'user').pop()?.content || '';
       const lowerMessage = lastUserMessage.toLowerCase();
       
       console.log("Last user message:", lastUserMessage);
@@ -316,17 +375,18 @@ serve(async (req) => {
       });
     }
 
-    // Create a new stream that prepends sources metadata
+    // Create a new stream that prepends metadata (sources + actualModel)
     const originalStream = response.body;
     const encoder = new TextEncoder();
     
     const customStream = new ReadableStream({
       async start(controller) {
-        // Send sources metadata as first event
-        if (usedSources.length > 0) {
-          const sourcesEvent = `data: ${JSON.stringify({ sources: usedSources })}\n\n`;
-          controller.enqueue(encoder.encode(sourcesEvent));
-        }
+        // Send metadata as first event (sources + actualModel)
+        const metadataEvent = `data: ${JSON.stringify({ 
+          sources: usedSources,
+          actualModel: model 
+        })}\n\n`;
+        controller.enqueue(encoder.encode(metadataEvent));
         
         // Forward the original stream
         if (originalStream) {
