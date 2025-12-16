@@ -214,12 +214,13 @@ serve(async (req) => {
         .from("api_keys")
         .select("id, name")
         .eq("email", email)
+        .eq("is_active", true)
         .single();
 
       if (findError || !existing) {
         return new Response(JSON.stringify({ 
           error: "Email not found", 
-          message: "No API key found for this email. Please register first." 
+          message: "No active API key found for this email. Please register first." 
         }), {
           status: 404,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -259,9 +260,102 @@ serve(async (req) => {
       });
     }
 
+    // ACTION: List user's API keys
+    if (action === "list" && req.method === "POST") {
+      const { email } = body;
+
+      if (!email) {
+        return new Response(JSON.stringify({ error: "Email is required" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: keys, error: listError } = await supabase
+        .from("api_keys")
+        .select("id, key_prefix, name, email, is_active, daily_limit, created_at, last_used_at")
+        .eq("email", email)
+        .order("created_at", { ascending: false });
+
+      if (listError) {
+        return new Response(JSON.stringify({ error: "Failed to fetch API keys" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Get today's usage for each key
+      const keysWithUsage = await Promise.all(
+        (keys || []).map(async (key) => {
+          const { data: usage } = await supabase.rpc("get_daily_usage_count", {
+            p_api_key_id: key.id,
+          });
+          return { ...key, today_usage: usage || 0 };
+        })
+      );
+
+      return new Response(JSON.stringify({
+        success: true,
+        keys: keysWithUsage,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ACTION: Revoke API key
+    if (action === "revoke" && req.method === "POST") {
+      const { email } = body;
+
+      if (!email) {
+        return new Response(JSON.stringify({ error: "Email is required" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: existing, error: findError } = await supabase
+        .from("api_keys")
+        .select("id, name")
+        .eq("email", email)
+        .eq("is_active", true)
+        .single();
+
+      if (findError || !existing) {
+        return new Response(JSON.stringify({ 
+          error: "No active key found", 
+          message: "No active API key found for this email." 
+        }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Revoke the key
+      const { error: updateError } = await supabase
+        .from("api_keys")
+        .update({ is_active: false })
+        .eq("id", existing.id);
+
+      if (updateError) {
+        return new Response(JSON.stringify({ error: "Failed to revoke API key" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      console.log(`API key revoked for: ${existing.name} (${email})`);
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: "API key has been revoked successfully",
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ 
       error: "Invalid action", 
-      available_actions: ["register", "usage", "regenerate"] 
+      available_actions: ["register", "usage", "regenerate", "list", "revoke"] 
     }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

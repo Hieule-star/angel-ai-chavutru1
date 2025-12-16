@@ -21,6 +21,7 @@ import RoleManagement from "./pages/admin/RoleManagement";
 import ApiKeys from "./pages/admin/ApiKeys";
 import ApiAnalytics from "./pages/admin/ApiAnalytics";
 import Developers from "./pages/Developers";
+import DeveloperKeys from "./pages/DeveloperKeys";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ function AppContent() {
       <Route path="/admin/api-keys" element={<ApiKeys />} />
       <Route path="/admin/api-analytics" element={<ApiAnalytics />} />
       <Route path="/developers" element={<Developers />} />
+      <Route path="/developers/keys" element={<DeveloperKeys />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

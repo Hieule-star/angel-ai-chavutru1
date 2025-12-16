@@ -1,22 +1,56 @@
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Home, MessageCircle, BookOpen, User, Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useUserStore } from '@/stores/userStore';
+import { supabase } from '@/integrations/supabase/client';
 import angelLogo from '@/assets/angel-logo.png';
 
-const navLinks = [
+// Public nav links visible to all users
+const publicNavLinks = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/chat', label: 'Chat', icon: MessageCircle },
-  { path: '/knowledge', label: 'Knowledge', icon: BookOpen },
   { path: '/profile', label: 'Profile', icon: User },
+];
+
+// Admin-only nav links
+const adminNavLinks = [
+  { path: '/knowledge', label: 'Knowledge', icon: BookOpen },
 ];
 
 export function Navbar() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { isAuthenticated, user } = useUserStore();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const { isAuthenticated, user, session } = useUserStore();
+
+  // Check admin role
+  useEffect(() => {
+    async function checkAdmin() {
+      if (!session?.user?.id) {
+        setIsAdmin(false);
+        return;
+      }
+      
+      try {
+        const { data } = await supabase.rpc('has_role', {
+          _user_id: session.user.id,
+          _role: 'admin',
+        });
+        setIsAdmin(data === true);
+      } catch (error) {
+        setIsAdmin(false);
+      }
+    }
+    
+    checkAdmin();
+  }, [session?.user?.id]);
+
+  // Combine nav links based on role
+  const navLinks = isAdmin 
+    ? [...publicNavLinks, ...adminNavLinks]
+    : publicNavLinks;
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-angel-gold/20">
