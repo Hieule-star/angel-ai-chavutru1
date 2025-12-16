@@ -7,9 +7,10 @@ import { CategoryTabs } from '@/components/knowledge/CategoryTabs';
 import { CategoryHeader } from '@/components/knowledge/CategoryHeader';
 import { Button } from '@/components/ui/button';
 import { useKnowledgeTopics } from '@/hooks/useKnowledgeTopics';
-import { useAdminCheck } from '@/hooks/useAdminCheck';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 import type { KnowledgeTopic } from '@/types';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Knowledge() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -18,8 +19,22 @@ export default function Knowledge() {
   const [selectedTopic, setSelectedTopic] = useState<KnowledgeTopic | null>(null);
   
   const { data: topics = [], isLoading, error } = useKnowledgeTopics();
-  const { isAdmin } = useAdminCheck();
+  const { isAdmin, loading: adminLoading } = useIsAdmin();
   const [copied, setCopied] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  // Route protection - redirect non-admin users to /chat
+  useEffect(() => {
+    if (!adminLoading && !isAdmin) {
+      toast({
+        title: "Chỉ dành cho Admin",
+        description: "Trang Knowledge Base chỉ dành cho quản trị viên",
+        variant: "destructive",
+      });
+      navigate('/chat');
+    }
+  }, [isAdmin, adminLoading, navigate, toast]);
 
   const handleCopyContent = async () => {
     if (!selectedTopic) return;
