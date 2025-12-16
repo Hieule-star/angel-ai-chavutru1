@@ -43,7 +43,35 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, model: requestedModel } = await req.json();
+    // Safe JSON parsing with dedicated try-catch
+    let body;
+    try {
+      const text = await req.text();
+      if (!text || text.trim() === '') {
+        console.error("Empty request body received");
+        return new Response(JSON.stringify({ error: "Request body is empty" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      body = JSON.parse(text);
+    } catch (parseError) {
+      console.error("JSON parse error:", parseError);
+      return new Response(JSON.stringify({ error: "Invalid JSON format in request body" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { messages, model: requestedModel } = body;
+    
+    // Validate messages array
+    if (!messages || !Array.isArray(messages)) {
+      return new Response(JSON.stringify({ error: "Messages array is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     
     // Validate and set model
     const model = SUPPORTED_MODELS.includes(requestedModel) 
