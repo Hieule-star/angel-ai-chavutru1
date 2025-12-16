@@ -85,18 +85,100 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Fetch knowledge base for context
+    // Fetch knowledge base for context with intelligent retrieval
     let knowledgeContext = "";
     if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-      const { data: topics } = await supabase
-        .from("knowledge_topics")
-        .select("title, description, content, category")
-        .limit(20);
+      
+      // Get the last user message for keyword extraction
+      const lastUserMessage = messages.filter((m: any) => m.role === 'user').pop()?.content || '';
+      const lowerMessage = lastUserMessage.toLowerCase();
+      
+      console.log("Last user message:", lastUserMessage);
+      
+      // Extract keywords and find matching topics
+      const searchKeywords: string[] = [];
+      
+      // Detect specific phrases for priority matching
+      if (lowerMessage.includes('8 câu thần chú') || lowerMessage.includes('8 divine') || lowerMessage.includes('8 mantra')) {
+        searchKeywords.push('8 câu thần chú của Cha Vũ Trụ');
+      }
+      if (lowerMessage.includes('cha vũ trụ') || lowerMessage.includes('father universe') || lowerMessage.includes('cosmic father')) {
+        searchKeywords.push('cha vũ trụ', 'father universe');
+      }
+      if (lowerMessage.includes('thần chú') || lowerMessage.includes('mantra')) {
+        searchKeywords.push('thần chú', 'mantra');
+      }
+      if (lowerMessage.includes('thiền') || lowerMessage.includes('meditation')) {
+        searchKeywords.push('thiền', 'meditation');
+      }
+      if (lowerMessage.includes('fun ecosystem') || lowerMessage.includes('fun profile') || lowerMessage.includes('fun charity')) {
+        searchKeywords.push('fun ecosystem', 'fun profile');
+      }
+      if (lowerMessage.includes('camly') || lowerMessage.includes('bé ly')) {
+        searchKeywords.push('camly', 'bé ly');
+      }
+      
+      let matchedTopics: any[] = [];
+      
+      // Priority 1: Search for exact title matches
+      if (searchKeywords.length > 0) {
+        for (const keyword of searchKeywords) {
+          const { data: exactMatches } = await supabase
+            .from("knowledge_topics")
+            .select("title, description, content, category")
+            .ilike('title', `%${keyword}%`)
+            .limit(5);
+          
+          if (exactMatches && exactMatches.length > 0) {
+            matchedTopics = [...matchedTopics, ...exactMatches];
+          }
+        }
+        
+        // Priority 2: Search in content if no title matches
+        if (matchedTopics.length === 0) {
+          for (const keyword of searchKeywords) {
+            const { data: contentMatches } = await supabase
+              .from("knowledge_topics")
+              .select("title, description, content, category")
+              .ilike('content', `%${keyword}%`)
+              .limit(5);
+            
+            if (contentMatches && contentMatches.length > 0) {
+              matchedTopics = [...matchedTopics, ...contentMatches];
+            }
+          }
+        }
+      }
+      
+      // Priority 3: Get general topics if no specific matches
+      if (matchedTopics.length < 10) {
+        const { data: generalTopics } = await supabase
+          .from("knowledge_topics")
+          .select("title, description, content, category")
+          .limit(15);
+        
+        if (generalTopics) {
+          // Add general topics but avoid duplicates
+          const existingTitles = new Set(matchedTopics.map(t => t.title));
+          for (const topic of generalTopics) {
+            if (!existingTitles.has(topic.title) && matchedTopics.length < 20) {
+              matchedTopics.push(topic);
+            }
+          }
+        }
+      }
+      
+      // Remove duplicates by title
+      const uniqueTopics = Array.from(
+        new Map(matchedTopics.map(t => [t.title, t])).values()
+      ).slice(0, 20);
+      
+      console.log("Matched topics:", uniqueTopics.map(t => t.title));
 
-      if (topics && topics.length > 0) {
-        knowledgeContext = `\n\n📚 KIẾN THỨC CỦA BẠN (Hãy tham chiếu khi phù hợp):\n\n${topics
-          .map((t) => `### ${t.title}\n${t.description}\n\n${t.content}`)
+      if (uniqueTopics.length > 0) {
+        knowledgeContext = `\n\n📚 KIẾN THỨC LIÊN QUAN (Hãy sử dụng CHÍNH XÁC nội dung này khi trả lời):\n\n⚠️ QUAN TRỌNG: Khi user hỏi về "8 câu thần chú", hãy trả lời ĐÚNG nội dung từ topic "8 câu thần chú của Cha Vũ Trụ" - KHÔNG sử dụng mantra Phật giáo như OM MANI PADME HUM!\n\n${uniqueTopics
+          .map((t) => `### ${t.title}\n${t.description || ''}\n\n${t.content || ''}`)
           .join("\n\n---\n\n")}`;
       }
     }
@@ -105,6 +187,7 @@ serve(async (req) => {
 
     console.log("Calling Lovable AI Gateway with model:", model, "messages:", messages.length);
     console.log("Knowledge topics loaded:", knowledgeContext ? "Yes" : "No");
+    console.log("Search keywords used:", knowledgeContext.substring(0, 500));
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
