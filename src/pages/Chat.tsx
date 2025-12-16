@@ -12,7 +12,7 @@ import { useUserStore } from '@/stores/userStore';
 import { useGuestMessageLimit } from '@/hooks/useGuestMessageLimit';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import type { ChatMessage, AIModel } from '@/types';
+import type { ChatMessage, AIModel, KnowledgeSource } from '@/types';
 import angelLogo from '@/assets/angel-logo.png';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/angel-ai`;
@@ -28,6 +28,7 @@ const getStoredModel = (): AIModel => {
 export default function Chat() {
   const [isLoading, setIsLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
+  const [streamingSources, setStreamingSources] = useState<KnowledgeSource[]>([]);
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [selectedModel, setSelectedModel] = useState<AIModel>(getStoredModel);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -151,6 +152,7 @@ export default function Chat() {
     addChatMessage(userMessage);
     setIsLoading(true);
     setStreamingContent('');
+    setStreamingSources([]);
 
     // Save user message to database
     if (isAuthenticated) {
@@ -197,6 +199,7 @@ export default function Chat() {
       const decoder = new TextDecoder();
       let textBuffer = '';
       let fullContent = '';
+      let capturedSources: KnowledgeSource[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
@@ -218,6 +221,14 @@ export default function Chat() {
 
           try {
             const parsed = JSON.parse(jsonStr);
+            
+            // Check for sources metadata (sent as first event)
+            if (parsed.sources && Array.isArray(parsed.sources)) {
+              capturedSources = parsed.sources;
+              setStreamingSources(capturedSources);
+              continue;
+            }
+            
             const content = parsed.choices?.[0]?.delta?.content as string | undefined;
             if (content) {
               fullContent += content;
@@ -238,9 +249,11 @@ export default function Chat() {
         message: fullContent,
         timestamp: new Date().toISOString(),
         model: selectedModel,
+        sources: capturedSources.length > 0 ? capturedSources : undefined,
       };
       addChatMessage(aiMessage);
       setStreamingContent('');
+      setStreamingSources([]);
 
       // Save AI message to database and increment light points
       if (isAuthenticated) {
@@ -358,6 +371,7 @@ export default function Chat() {
                       message: streamingContent,
                       timestamp: new Date().toISOString(),
                       model: selectedModel,
+                      sources: streamingSources.length > 0 ? streamingSources : undefined,
                     }}
                   />
                 )}
