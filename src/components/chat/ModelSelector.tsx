@@ -68,13 +68,13 @@ export function ModelSelector({ selectedModel, onModelChange }: ModelSelectorPro
       <AnimatePresence>
         {isOpen && (
           <>
-            <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+            <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
             <motion.div
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-              className="absolute bottom-full left-0 mb-2 w-56 bg-white/95 backdrop-blur-xl rounded-xl border border-angel-gold/20 shadow-divine overflow-hidden z-20"
+              className="absolute top-full left-0 mt-2 w-56 bg-white/95 backdrop-blur-xl rounded-xl border border-angel-gold/20 shadow-divine overflow-hidden z-50"
             >
               <div className="p-1">
                 {MODEL_OPTIONS.map((model) => (
