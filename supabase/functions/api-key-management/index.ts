@@ -44,13 +44,20 @@ serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   
-  const url = new URL(req.url);
-  const action = url.searchParams.get("action");
-
   try {
+    // Parse body once for POST requests
+    let body: { action?: string; name?: string; email?: string; description?: string } = {};
+    if (req.method === "POST") {
+      body = await req.json();
+    }
+    
+    // Get action from body (POST) or query params (GET)
+    const url = new URL(req.url);
+    const action = body.action || url.searchParams.get("action");
+
     // ACTION: Register new API key
     if (action === "register" && req.method === "POST") {
-      const { name, email, description } = await req.json();
+      const { name, email, description } = body;
 
       // Validate input
       if (!name || !email) {
@@ -194,7 +201,7 @@ serve(async (req) => {
 
     // ACTION: Regenerate API key
     if (action === "regenerate" && req.method === "POST") {
-      const { email } = await req.json();
+      const { email } = body;
 
       if (!email) {
         return new Response(JSON.stringify({ error: "Email is required" }), {
