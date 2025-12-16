@@ -232,8 +232,8 @@ export function ChatSidebar({
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed lg:relative inset-y-0 left-0 z-50 w-72 bg-background border-r transform transition-transform duration-300 ease-in-out flex flex-col',
-          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 lg:w-0 lg:border-0 lg:overflow-hidden'
+          'fixed lg:static inset-y-0 left-0 z-50 w-72 bg-background border-r transform transition-transform duration-300 ease-in-out flex flex-col',
+          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
         {/* Header */}
