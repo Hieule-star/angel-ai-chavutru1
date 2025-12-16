@@ -3,6 +3,9 @@ project_id = "sasbfslupxdsaqifnqzx"
 [functions.angel-ai]
 verify_jwt = false
 
+[functions.angel-image]
+verify_jwt = false
+
 [functions.process-knowledge-file]
 verify_jwt = false
 

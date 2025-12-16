@@ -33,8 +33,7 @@ export default function Developers() {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('api-key-management', {
-        body: { name, email, description },
-        headers: { 'Content-Type': 'application/json' },
+        body: { action: 'register', name, email, description },
       });
 
       // Handle the response properly

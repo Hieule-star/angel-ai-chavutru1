@@ -9,6 +9,12 @@ export interface User {
 
 export type AIModel = 'google/gemini-2.5-flash' | 'google/gemini-2.5-pro' | 'openai/gpt-5-mini' | 'openai/gpt-5';
 
+export interface KnowledgeSource {
+  id: string;
+  title: string;
+  category: string;
+}
+
 export interface ChatMessage {
   id: string;
   user_id: string;
@@ -16,6 +22,7 @@ export interface ChatMessage {
   message: string;
   timestamp: string;
   model?: AIModel;
+  sources?: KnowledgeSource[];
 }
 
 export interface KnowledgeTopic {

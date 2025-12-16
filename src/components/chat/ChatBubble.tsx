@@ -1,5 +1,7 @@
-import { motion } from 'framer-motion';
-import { Zap, Sparkles, Brain, Rocket } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Zap, Sparkles, Brain, Rocket, BookOpen, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import type { ChatMessage, AIModel } from '@/types';
 import angelLogo from '@/assets/angel-logo.png';
 
@@ -23,8 +25,10 @@ const getModelBadge = (model?: AIModel) => {
 };
 
 export function ChatBubble({ message }: ChatBubbleProps) {
+  const [showSources, setShowSources] = useState(false);
   const isUser = message.role === 'user';
   const modelBadge = !isUser ? getModelBadge(message.model) : null;
+  const hasSources = !isUser && message.sources && message.sources.length > 0;
 
   return (
     <motion.div
@@ -72,6 +76,48 @@ export function ChatBubble({ message }: ChatBubbleProps) {
         <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap">
           {message.message}
         </p>
+        
+        {/* Sources Section */}
+        {hasSources && (
+          <div className="mt-3 pt-2 border-t border-angel-gold/10">
+            <button
+              onClick={() => setShowSources(!showSources)}
+              className="flex items-center gap-1.5 text-xs text-angel-gold/70 hover:text-angel-gold transition-colors"
+            >
+              <BookOpen className="w-3 h-3" />
+              <span>Nguồn knowledge ({message.sources!.length})</span>
+              {showSources ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+            
+            <AnimatePresence>
+              {showSources && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-2 space-y-1">
+                    {message.sources!.map((source, index) => (
+                      <Link
+                        key={index}
+                        to={`/knowledge?topic=${source.id}`}
+                        className="flex items-center gap-2 text-xs bg-angel-gold/5 hover:bg-angel-gold/10 rounded-lg px-2 py-1.5 transition-colors group"
+                      >
+                        <span className="text-angel-gold">📚</span>
+                        <span className="text-foreground/80 truncate flex-1 group-hover:text-angel-gold transition-colors">{source.title}</span>
+                        <span className="text-muted-foreground text-[10px] shrink-0">{source.category}</span>
+                        <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-angel-gold transition-colors" />
+                      </Link>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+        
         <p className="text-xs text-muted-foreground mt-2">
           {new Date(message.timestamp).toLocaleTimeString('vi-VN', {
             hour: '2-digit',

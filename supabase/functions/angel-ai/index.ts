@@ -87,6 +87,8 @@ serve(async (req) => {
 
     // Fetch knowledge base for context with intelligent retrieval
     let knowledgeContext = "";
+    let usedSources: { id: string; title: string; category: string }[] = [];
+    
     if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
       
@@ -126,7 +128,7 @@ serve(async (req) => {
         for (const keyword of searchKeywords) {
           const { data: exactMatches } = await supabase
             .from("knowledge_topics")
-            .select("title, description, content, category")
+            .select("id, title, description, content, category")
             .ilike('title', `%${keyword}%`)
             .limit(5);
           
@@ -140,7 +142,7 @@ serve(async (req) => {
           for (const keyword of searchKeywords) {
             const { data: contentMatches } = await supabase
               .from("knowledge_topics")
-              .select("title, description, content, category")
+              .select("id, title, description, content, category")
               .ilike('content', `%${keyword}%`)
               .limit(5);
             
@@ -155,7 +157,7 @@ serve(async (req) => {
       if (matchedTopics.length < 10) {
         const { data: generalTopics } = await supabase
           .from("knowledge_topics")
-          .select("title, description, content, category")
+          .select("id, title, description, content, category")
           .limit(15);
         
         if (generalTopics) {
@@ -180,6 +182,13 @@ serve(async (req) => {
         knowledgeContext = `\n\n📚 KIẾN THỨC LIÊN QUAN (Hãy sử dụng CHÍNH XÁC nội dung này khi trả lời):\n\n⚠️ QUAN TRỌNG: Khi user hỏi về "8 câu thần chú", hãy trả lời ĐÚNG nội dung từ topic "8 câu thần chú của Cha Vũ Trụ" - KHÔNG sử dụng mantra Phật giáo như OM MANI PADME HUM!\n\n${uniqueTopics
           .map((t) => `### ${t.title}\n${t.description || ''}\n\n${t.content || ''}`)
           .join("\n\n---\n\n")}`;
+        
+        // Prepare sources metadata to send to client
+        usedSources = uniqueTopics.slice(0, 5).map(t => ({
+          id: t.id,
+          title: t.title,
+          category: t.category || 'General'
+        }));
       }
     }
 
@@ -187,7 +196,7 @@ serve(async (req) => {
 
     console.log("Calling Lovable AI Gateway with model:", model, "messages:", messages.length);
     console.log("Knowledge topics loaded:", knowledgeContext ? "Yes" : "No");
-    console.log("Search keywords used:", knowledgeContext.substring(0, 500));
+    console.log("Used sources:", usedSources.map(s => s.title));
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -228,7 +237,36 @@ serve(async (req) => {
       });
     }
 
-    return new Response(response.body, {
+    // Create a new stream that prepends sources metadata
+    const originalStream = response.body;
+    const encoder = new TextEncoder();
+    
+    const customStream = new ReadableStream({
+      async start(controller) {
+        // Send sources metadata as first event
+        if (usedSources.length > 0) {
+          const sourcesEvent = `data: ${JSON.stringify({ sources: usedSources })}\n\n`;
+          controller.enqueue(encoder.encode(sourcesEvent));
+        }
+        
+        // Forward the original stream
+        if (originalStream) {
+          const reader = originalStream.getReader();
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              controller.enqueue(value);
+            }
+          } finally {
+            reader.releaseLock();
+          }
+        }
+        controller.close();
+      }
+    });
+
+    return new Response(customStream, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (error) {
