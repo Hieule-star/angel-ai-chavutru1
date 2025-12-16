@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, MessageCircle, Loader2, Settings } from 'lucide-react';
+import { Search, X, MessageCircle, Loader2, Settings, Copy, Check } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { KnowledgeCard } from '@/components/knowledge/KnowledgeCard';
 import { CategoryTabs } from '@/components/knowledge/CategoryTabs';
@@ -19,6 +19,15 @@ export default function Knowledge() {
   
   const { data: topics = [], isLoading, error } = useKnowledgeTopics();
   const { isAdmin } = useAdminCheck();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyContent = async () => {
+    if (!selectedTopic) return;
+    const textToCopy = `${selectedTopic.title}\n\n${selectedTopic.description}\n\n${selectedTopic.content}`;
+    await navigator.clipboard.writeText(textToCopy);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   // Handle topic query param - auto-open topic detail
   useEffect(() => {
@@ -253,6 +262,26 @@ export default function Knowledge() {
                 </div>
               </div>
               <div className="p-6 overflow-y-auto max-h-[50vh]">
+                <div className="flex justify-end mb-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCopyContent}
+                    className="gap-2 text-muted-foreground hover:text-foreground"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="w-4 h-4 text-green-500" />
+                        Đã copy
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        Copy nội dung
+                      </>
+                    )}
+                  </Button>
+                </div>
                 <p className="text-muted-foreground mb-4">{selectedTopic.description}</p>
                 <div className="prose prose-sm">
                   <p className="whitespace-pre-wrap">{selectedTopic.content}</p>
