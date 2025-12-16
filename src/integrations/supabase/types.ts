@@ -106,6 +106,7 @@ export type Database = {
           id: string
           message: string
           role: string
+          session_id: string | null
           user_id: string
         }
         Insert: {
@@ -113,6 +114,7 @@ export type Database = {
           id?: string
           message: string
           role: string
+          session_id?: string | null
           user_id: string
         }
         Update: {
@@ -120,9 +122,17 @@ export type Database = {
           id?: string
           message?: string
           role?: string
+          session_id?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "chat_history_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "chat_history_user_id_fkey"
             columns: ["user_id"]
@@ -131,6 +141,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      chat_sessions: {
+        Row: {
+          created_at: string | null
+          id: string
+          title: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          title?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       generated_images: {
         Row: {
