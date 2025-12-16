@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { User, Wallet, Sparkles, LogOut, Settings, MessageCircle } from 'lucide-react';
+import { User, Wallet, Sparkles, LogOut, Settings, MessageCircle, Code } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { useUserStore } from '@/stores/userStore';
@@ -154,6 +154,12 @@ export default function Profile() {
             transition={{ delay: 0.4 }}
             className="space-y-3"
           >
+            <Link to="/developers" className="block">
+              <Button variant="holy" className="w-full justify-start" size="lg">
+                <Code className="w-5 h-5" />
+                API & Developers
+              </Button>
+            </Link>
             <Link to="/settings" className="block">
               <Button variant="holy" className="w-full justify-start" size="lg">
                 <Settings className="w-5 h-5" />

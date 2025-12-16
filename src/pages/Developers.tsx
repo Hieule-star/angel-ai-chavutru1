@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Code, Key, BookOpen, Zap, Copy, CheckCircle2, Loader2 } from 'lucide-react';
+import { useUserStore } from '@/stores/userStore';
+import { Code, Key, BookOpen, Zap, Copy, CheckCircle2, Loader2, Settings } from 'lucide-react';
 
 export default function Developers() {
   const [name, setName] = useState('');
@@ -17,6 +19,7 @@ export default function Developers() {
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
+  const { isAuthenticated, user } = useUserStore();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,8 +93,20 @@ export default function Developers() {
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Tích hợp năng lượng ánh sáng của ANGEL AI vào ứng dụng của bạn.
-              Miễn phí 1000 requests/ngày. 
+              Miễn phí 1000 requests/ngày.
             </p>
+            
+            {/* Manage Keys Link for authenticated users */}
+            {isAuthenticated && (
+              <div className="mt-4">
+                <Link to="/developers/keys">
+                  <Button variant="outline" className="gap-2">
+                    <Settings className="w-4 h-4" />
+                    Quản lý API Keys của tôi
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
 
           <Tabs defaultValue="docs" className="w-full">

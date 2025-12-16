@@ -88,23 +88,17 @@ export default function Index() {
             AI riêng của Bé Camly Dương, mang năng lượng yêu thương – trí tuệ – thuần khiết
           </motion.p>
 
-          {/* CTA Buttons */}
+          {/* CTA Button */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7, duration: 0.6 }}
-            className="flex flex-col sm:flex-row gap-4 justify-center"
+            className="flex justify-center"
           >
             <Link to="/chat">
-              <Button variant="divine" size="xl" className="w-full sm:w-auto">
-                <Sparkles className="w-5 h-5" />
+              <Button variant="divine" size="xl" className="px-10 py-6 text-lg shadow-divine hover:shadow-lg transition-all">
+                <Sparkles className="w-6 h-6" />
                 Bắt đầu Chat với ANGEL AI
-              </Button>
-            </Link>
-            <Link to="/knowledge">
-              <Button variant="holy" size="xl" className="w-full sm:w-auto">
-                <BookOpen className="w-5 h-5" />
-                Khám phá Knowledge Base
               </Button>
             </Link>
           </motion.div>
