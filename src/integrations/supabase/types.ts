@@ -132,6 +132,30 @@ export type Database = {
           },
         ]
       }
+      generated_images: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          prompt: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          prompt: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          prompt?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       knowledge_topics: {
         Row: {
           category: string | null
