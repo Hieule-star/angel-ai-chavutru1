@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, MessageCircle, Loader2, Settings } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
@@ -9,15 +9,29 @@ import { Button } from '@/components/ui/button';
 import { useKnowledgeTopics } from '@/hooks/useKnowledgeTopics';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import type { KnowledgeTopic } from '@/types';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 export default function Knowledge() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<KnowledgeTopic | null>(null);
   
   const { data: topics = [], isLoading, error } = useKnowledgeTopics();
   const { isAdmin } = useAdminCheck();
+
+  // Handle topic query param - auto-open topic detail
+  useEffect(() => {
+    const topicId = searchParams.get('topic');
+    if (topicId && topics.length > 0) {
+      const topic = topics.find(t => t.id === topicId);
+      if (topic) {
+        setSelectedTopic(topic);
+        // Clear the query param after opening
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [searchParams, topics, setSearchParams]);
 
   // Count topics per category
   const categoryCounts = useMemo(() => {

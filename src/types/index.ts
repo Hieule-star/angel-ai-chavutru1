@@ -10,6 +10,7 @@ export interface User {
 export type AIModel = 'google/gemini-2.5-flash' | 'google/gemini-2.5-pro' | 'openai/gpt-5-mini' | 'openai/gpt-5';
 
 export interface KnowledgeSource {
+  id: string;
   title: string;
   category: string;
 }
