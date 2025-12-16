@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { List, Search, Loader2, Trash2, Eye, Filter } from 'lucide-react';
+import { List, Search, Loader2, Trash2, Eye, Filter, Pencil } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -32,6 +34,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { KNOWLEDGE_CATEGORIES } from '@/data/categories';
 
 interface KnowledgeTopic {
   id: string;
@@ -51,6 +54,8 @@ export default function KnowledgeList() {
   const [viewTopic, setViewTopic] = useState<KnowledgeTopic | null>(null);
   const [deleteTopic, setDeleteTopic] = useState<KnowledgeTopic | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editTopic, setEditTopic] = useState<KnowledgeTopic | null>(null);
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -101,6 +106,39 @@ export default function KnowledgeList() {
       });
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handleEdit() {
+    if (!editTopic) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('knowledge_topics')
+        .update({
+          title: editTopic.title,
+          description: editTopic.description,
+          content: editTopic.content,
+          category: editTopic.category,
+        })
+        .eq('id', editTopic.id);
+
+      if (error) throw error;
+
+      setTopics((prev) =>
+        prev.map((t) => (t.id === editTopic.id ? editTopic : t))
+      );
+      toast({ title: 'Đã cập nhật topic thành công!' });
+      setEditTopic(null);
+    } catch (err: any) {
+      toast({
+        title: 'Lỗi cập nhật topic',
+        description: err.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -225,6 +263,14 @@ export default function KnowledgeList() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => setEditTopic({ ...topic })}
+                            className="text-amber-600 hover:text-amber-700"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => setDeleteTopic(topic)}
                             className="text-destructive hover:text-destructive"
                           >
@@ -302,6 +348,96 @@ export default function KnowledgeList() {
                   </>
                 ) : (
                   'Xóa'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Dialog */}
+        <Dialog open={!!editTopic} onOpenChange={() => setEditTopic(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Chỉnh sửa Topic</DialogTitle>
+              <DialogDescription>
+                Cập nhật thông tin cho knowledge topic
+              </DialogDescription>
+            </DialogHeader>
+            {editTopic && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-title">Tiêu đề</Label>
+                  <Input
+                    id="edit-title"
+                    value={editTopic.title}
+                    onChange={(e) =>
+                      setEditTopic({ ...editTopic, title: e.target.value })
+                    }
+                    placeholder="Nhập tiêu đề..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-description">Mô tả</Label>
+                  <Textarea
+                    id="edit-description"
+                    value={editTopic.description || ''}
+                    onChange={(e) =>
+                      setEditTopic({ ...editTopic, description: e.target.value })
+                    }
+                    placeholder="Nhập mô tả ngắn..."
+                    rows={2}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-category">Category</Label>
+                  <Select
+                    value={editTopic.category || ''}
+                    onValueChange={(value) =>
+                      setEditTopic({ ...editTopic, category: value })
+                    }
+                  >
+                    <SelectTrigger id="edit-category">
+                      <SelectValue placeholder="Chọn category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {KNOWLEDGE_CATEGORIES.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.name}>
+                          {cat.icon} {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-content">Nội dung</Label>
+                  <Textarea
+                    id="edit-content"
+                    value={editTopic.content || ''}
+                    onChange={(e) =>
+                      setEditTopic({ ...editTopic, content: e.target.value })
+                    }
+                    placeholder="Nhập nội dung chi tiết..."
+                    rows={12}
+                    className="font-mono text-sm"
+                  />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditTopic(null)}>
+                Hủy
+              </Button>
+              <Button onClick={handleEdit} disabled={saving || !editTopic?.title}>
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Đang lưu...
+                  </>
+                ) : (
+                  'Lưu thay đổi'
                 )}
               </Button>
             </DialogFooter>
