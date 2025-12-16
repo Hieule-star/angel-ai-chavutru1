@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, Sparkles, Brain, Rocket, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
+import { Zap, Sparkles, Brain, Rocket, BookOpen, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import type { ChatMessage, AIModel } from '@/types';
 import angelLogo from '@/assets/angel-logo.png';
 
@@ -99,14 +100,16 @@ export function ChatBubble({ message }: ChatBubbleProps) {
                 >
                   <div className="mt-2 space-y-1">
                     {message.sources!.map((source, index) => (
-                      <div
+                      <Link
                         key={index}
-                        className="flex items-center gap-2 text-xs bg-angel-gold/5 rounded-lg px-2 py-1.5"
+                        to={`/knowledge?topic=${source.id}`}
+                        className="flex items-center gap-2 text-xs bg-angel-gold/5 hover:bg-angel-gold/10 rounded-lg px-2 py-1.5 transition-colors group"
                       >
                         <span className="text-angel-gold">📚</span>
-                        <span className="text-foreground/80 truncate flex-1">{source.title}</span>
+                        <span className="text-foreground/80 truncate flex-1 group-hover:text-angel-gold transition-colors">{source.title}</span>
                         <span className="text-muted-foreground text-[10px] shrink-0">{source.category}</span>
-                      </div>
+                        <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-angel-gold transition-colors" />
+                      </Link>
                     ))}
                   </div>
                 </motion.div>

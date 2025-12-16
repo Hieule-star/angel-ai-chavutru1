@@ -87,7 +87,7 @@ serve(async (req) => {
 
     // Fetch knowledge base for context with intelligent retrieval
     let knowledgeContext = "";
-    let usedSources: { title: string; category: string }[] = [];
+    let usedSources: { id: string; title: string; category: string }[] = [];
     
     if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -128,7 +128,7 @@ serve(async (req) => {
         for (const keyword of searchKeywords) {
           const { data: exactMatches } = await supabase
             .from("knowledge_topics")
-            .select("title, description, content, category")
+            .select("id, title, description, content, category")
             .ilike('title', `%${keyword}%`)
             .limit(5);
           
@@ -142,7 +142,7 @@ serve(async (req) => {
           for (const keyword of searchKeywords) {
             const { data: contentMatches } = await supabase
               .from("knowledge_topics")
-              .select("title, description, content, category")
+              .select("id, title, description, content, category")
               .ilike('content', `%${keyword}%`)
               .limit(5);
             
@@ -157,7 +157,7 @@ serve(async (req) => {
       if (matchedTopics.length < 10) {
         const { data: generalTopics } = await supabase
           .from("knowledge_topics")
-          .select("title, description, content, category")
+          .select("id, title, description, content, category")
           .limit(15);
         
         if (generalTopics) {
@@ -185,6 +185,7 @@ serve(async (req) => {
         
         // Prepare sources metadata to send to client
         usedSources = uniqueTopics.slice(0, 5).map(t => ({
+          id: t.id,
           title: t.title,
           category: t.category || 'General'
         }));
