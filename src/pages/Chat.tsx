@@ -157,6 +157,10 @@ export default function Chat() {
       await saveChatMessage('user', message);
     }
 
+    // Create timeout controller
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
     try {
       // Prepare messages for API
       const apiMessages = [
@@ -174,7 +178,10 @@ export default function Chat() {
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({ messages: apiMessages, model: selectedModel }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -241,10 +248,21 @@ export default function Chat() {
         await incrementLightPoints();
       }
     } catch (error) {
+      clearTimeout(timeoutId);
       console.error('Chat error:', error);
+      
+      let errorMessage = 'Không thể kết nối với ANGEL AI';
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = 'Yêu cầu quá lâu, vui lòng thử lại';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: 'Lỗi',
-        description: error instanceof Error ? error.message : 'Không thể kết nối với ANGEL AI',
+        description: errorMessage,
         variant: 'destructive',
       });
     }
