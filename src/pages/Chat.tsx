@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Trash2, MessageCircle, ImageIcon, Video, Menu, Plus } from 'lucide-react';
+import { Trash2, MessageCircle, ImageIcon, Video, Menu, Plus, PanelLeft, PanelLeftClose } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { ChatBubble } from '@/components/chat/ChatBubble';
 import { ChatInput } from '@/components/chat/ChatInput';
@@ -39,7 +39,8 @@ export default function Chat() {
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [selectedMode, setSelectedMode] = useState<SelectionMode>(getStoredMode);
   const [currentStreamingModel, setCurrentStreamingModel] = useState<AIModel | undefined>();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   
   // Session state
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -482,8 +483,9 @@ export default function Chat() {
             onSelectSession={handleSelectSession}
             onDeleteSession={handleDeleteSession}
             onUpdateTitle={handleUpdateSessionTitle}
-            isOpen={sidebarOpen}
-            onClose={() => setSidebarOpen(false)}
+            isOpen={mobileSidebarOpen}
+            onClose={() => setMobileSidebarOpen(false)}
+            isCollapsed={desktopSidebarCollapsed}
           />
         )}
 
@@ -493,15 +495,31 @@ export default function Chat() {
           <div className="px-4 py-3 border-b border-angel-gold/10 bg-white/50 backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                {/* Sidebar Toggle for authenticated users */}
+                {/* Mobile Sidebar Toggle */}
                 {isAuthenticated && (
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => setSidebarOpen(true)}
+                    onClick={() => setMobileSidebarOpen(true)}
                     className="lg:hidden"
                   >
                     <Menu className="h-5 w-5" />
+                  </Button>
+                )}
+
+                {/* Desktop Sidebar Toggle */}
+                {isAuthenticated && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
+                    className="hidden lg:flex"
+                  >
+                    {desktopSidebarCollapsed ? (
+                      <PanelLeft className="h-5 w-5" />
+                    ) : (
+                      <PanelLeftClose className="h-5 w-5" />
+                    )}
                   </Button>
                 )}
                 

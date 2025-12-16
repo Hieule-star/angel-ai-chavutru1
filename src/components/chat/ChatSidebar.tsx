@@ -17,6 +17,7 @@ interface ChatSidebarProps {
   onUpdateTitle: (sessionId: string, title: string) => void;
   isOpen: boolean;
   onClose: () => void;
+  isCollapsed?: boolean;
 }
 
 interface GroupedSessions {
@@ -216,6 +217,7 @@ export function ChatSidebar({
   onUpdateTitle,
   isOpen,
   onClose,
+  isCollapsed = false,
 }: ChatSidebarProps) {
   const groupedSessions = groupSessionsByDate(sessions);
 
@@ -232,8 +234,14 @@ export function ChatSidebar({
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed lg:static inset-y-0 left-0 z-50 w-72 bg-background border-r transform transition-transform duration-300 ease-in-out flex flex-col',
-          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          'fixed lg:static inset-y-0 left-0 z-50 bg-background border-r transform transition-all duration-300 ease-in-out flex flex-col',
+          // Mobile: slide in/out
+          isOpen ? 'translate-x-0' : '-translate-x-full',
+          // Desktop: always visible, but collapse/expand width
+          'lg:translate-x-0',
+          isCollapsed ? 'lg:w-0 lg:overflow-hidden lg:border-0' : 'lg:w-72',
+          // Width for mobile
+          'w-72'
         )}
       >
         {/* Header */}
