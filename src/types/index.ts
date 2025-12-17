@@ -49,5 +49,7 @@ export interface KnowledgeTopic {
 export interface WalletInfo {
   address: string | null;
   balance: number;
+  ethBalance: string;
+  chainId: number | null;
   connected: boolean;
 }
