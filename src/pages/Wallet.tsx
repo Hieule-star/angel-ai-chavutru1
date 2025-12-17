@@ -160,7 +160,7 @@ export default function Wallet() {
                   <div className="flex items-center justify-center gap-2">
                     <Coins className="w-8 h-8 text-primary" />
                     <span className="text-4xl font-bold text-gradient-divine">{wallet.balance}</span>
-                    <span className="text-xl text-muted-foreground">CLY</span>
+                    <span className="text-xl text-muted-foreground">CAMLY</span>
                   </div>
                 </div>
               </motion.div>
@@ -190,7 +190,7 @@ export default function Wallet() {
                     <Gift className="w-5 h-5 text-primary" />
                     <span className="text-sm text-muted-foreground">Thưởng chờ</span>
                   </div>
-                  <p className="text-2xl font-bold">25 CLY</p>
+                  <p className="text-2xl font-bold">25 CAMLY</p>
                 </motion.div>
               </div>
 
@@ -276,8 +276,8 @@ export default function Wallet() {
               >
                 <h3 className="font-semibold mb-3">Camly Coin là gì?</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Camly Coin (CLY) là đồng tiền của yêu thương trong FUN Ecosystem. 
-                  Bạn có thể tích lũy CLY bằng cách tương tác với ANGEL AI và lan tỏa năng lượng tích cực.
+                  Camly Coin (CAMLY) là đồng tiền của yêu thương trong FUN Ecosystem. 
+                  Bạn có thể tích lũy CAMLY bằng cách tương tác với ANGEL AI và lan tỏa năng lượng tích cực.
                 </p>
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li className="flex items-center gap-2">
