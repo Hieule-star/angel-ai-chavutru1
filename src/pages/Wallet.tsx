@@ -1,66 +1,27 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Wallet as WalletIcon, ExternalLink, Copy, Check, Coins, TrendingUp, Gift } from 'lucide-react';
+import { Wallet as WalletIcon, ExternalLink, Copy, Check, Coins, TrendingUp, Gift, Globe, AlertTriangle } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { useUserStore } from '@/stores/userStore';
-import { useToast } from '@/hooks/use-toast';
+import { useMetaMask, NETWORK_NAMES } from '@/hooks/useMetaMask';
 
 export default function Wallet() {
-  const { isAuthenticated, wallet, setWallet, disconnectWallet } = useUserStore();
-  const [isConnecting, setIsConnecting] = useState(false);
+  const { isAuthenticated, wallet } = useUserStore();
+  const { isMetaMaskInstalled, isConnecting, connectWallet, disconnect, getNetworkName, getEtherscanUrl } = useMetaMask();
   const [copied, setCopied] = useState(false);
-  const { toast } = useToast();
-
-  const handleConnect = async (walletType: string) => {
-    if (!isAuthenticated) {
-      toast({
-        title: 'Cần đăng nhập',
-        description: 'Vui lòng đăng nhập trước khi kết nối ví',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setIsConnecting(true);
-    // Simulate wallet connection
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    const mockAddress = `0x${Math.random().toString(16).slice(2, 10)}...${Math.random().toString(16).slice(2, 6)}`;
-    const mockBalance = Math.floor(Math.random() * 1000) + 100;
-
-    setWallet({
-      address: mockAddress,
-      balance: mockBalance,
-      connected: true,
-    });
-
-    setIsConnecting(false);
-    toast({
-      title: 'Kết nối thành công! ✨',
-      description: `${walletType} đã được kết nối`,
-    });
-  };
 
   const handleCopyAddress = () => {
     if (wallet.address) {
       navigator.clipboard.writeText(wallet.address);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      toast({
-        title: 'Đã sao chép',
-        description: 'Địa chỉ ví đã được sao chép vào clipboard',
-      });
     }
   };
 
-  const handleDisconnect = () => {
-    disconnectWallet();
-    toast({
-      title: 'Đã ngắt kết nối',
-      description: 'Ví đã được ngắt kết nối thành công',
-    });
+  const shortenAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
   if (!isAuthenticated) {
@@ -123,7 +84,11 @@ export default function Wallet() {
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl bg-angel-gold/20 flex items-center justify-center">
-                      <WalletIcon className="w-6 h-6 text-primary" />
+                      <img
+                        src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg"
+                        alt="MetaMask"
+                        className="w-7 h-7"
+                      />
                     </div>
                     <div>
                       <p className="font-semibold">MetaMask</p>
@@ -132,15 +97,30 @@ export default function Wallet() {
                       </span>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={handleDisconnect}>
+                  <Button variant="ghost" size="sm" onClick={disconnect}>
                     Ngắt kết nối
                   </Button>
+                </div>
+
+                {/* Network Badge */}
+                <div className="flex items-center gap-2 mb-4">
+                  <Globe className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
+                    {getNetworkName(wallet.chainId)}
+                  </span>
+                  {wallet.chainId && wallet.chainId !== 1 && (
+                    <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full">
+                      Testnet
+                    </span>
+                  )}
                 </div>
 
                 <div className="p-4 bg-muted/30 rounded-xl mb-6">
                   <p className="text-xs text-muted-foreground mb-1">Địa chỉ ví</p>
                   <div className="flex items-center gap-2">
-                    <p className="font-mono text-sm flex-1 truncate">{wallet.address}</p>
+                    <p className="font-mono text-sm flex-1 truncate">
+                      {wallet.address && shortenAddress(wallet.address)}
+                    </p>
                     <Button variant="ghost" size="icon" onClick={handleCopyAddress}>
                       {copied ? (
                         <Check className="w-4 h-4 text-green-600" />
@@ -148,13 +128,30 @@ export default function Wallet() {
                         <Copy className="w-4 h-4" />
                       )}
                     </Button>
-                    <Button variant="ghost" size="icon">
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => {
+                        if (wallet.address && wallet.chainId) {
+                          window.open(getEtherscanUrl(wallet.chainId, wallet.address), '_blank');
+                        }
+                      }}
+                    >
                       <ExternalLink className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
 
-                {/* Balance */}
+                {/* ETH Balance */}
+                <div className="p-4 bg-muted/20 rounded-xl mb-4">
+                  <p className="text-xs text-muted-foreground mb-1">Số dư ETH</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-bold">{wallet.ethBalance}</span>
+                    <span className="text-muted-foreground">ETH</span>
+                  </div>
+                </div>
+
+                {/* CAMLY Balance */}
                 <div className="text-center py-6 bg-gradient-to-r from-angel-gold/10 via-angel-pink/10 to-angel-blue/10 rounded-xl">
                   <p className="text-sm text-muted-foreground mb-2">Số dư Camly Coin</p>
                   <div className="flex items-center justify-center gap-2">
@@ -162,6 +159,9 @@ export default function Wallet() {
                     <span className="text-4xl font-bold text-gradient-divine">{wallet.balance}</span>
                     <span className="text-xl text-muted-foreground">CAMLY</span>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    (CAMLY token sẽ được tích hợp trong giai đoạn tiếp theo)
+                  </p>
                 </div>
               </motion.div>
 
@@ -175,9 +175,9 @@ export default function Wallet() {
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <TrendingUp className="w-5 h-5 text-green-600" />
-                    <span className="text-sm text-muted-foreground">Đang tăng</span>
+                    <span className="text-sm text-muted-foreground">Light Points</span>
                   </div>
-                  <p className="text-2xl font-bold text-green-600">+12.5%</p>
+                  <p className="text-2xl font-bold text-green-600">+{wallet.balance}</p>
                 </motion.div>
 
                 <motion.div
@@ -208,6 +208,32 @@ export default function Wallet() {
             </>
           ) : (
             <>
+              {/* MetaMask Not Installed Warning */}
+              {!isMetaMaskInstalled && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl mb-6 flex items-start gap-3"
+                >
+                  <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-yellow-800">MetaMask chưa được cài đặt</p>
+                    <p className="text-sm text-yellow-700 mt-1">
+                      Bạn cần cài đặt MetaMask extension để kết nối ví.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      onClick={() => window.open('https://metamask.io/download/', '_blank')}
+                    >
+                      Cài đặt MetaMask
+                      <ExternalLink className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+
               {/* Connect Wallet Options */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -219,8 +245,8 @@ export default function Wallet() {
                   variant="holy"
                   size="xl"
                   className="w-full justify-start"
-                  onClick={() => handleConnect('MetaMask')}
-                  disabled={isConnecting}
+                  onClick={connectWallet}
+                  disabled={isConnecting || !isMetaMaskInstalled}
                 >
                   <img
                     src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg"
@@ -229,23 +255,24 @@ export default function Wallet() {
                   />
                   <div className="text-left flex-1">
                     <p className="font-semibold">MetaMask</p>
-                    <p className="text-xs text-muted-foreground">Kết nối ví MetaMask</p>
+                    <p className="text-xs text-muted-foreground">
+                      {isMetaMaskInstalled ? 'Kết nối ví MetaMask' : 'Cần cài đặt MetaMask'}
+                    </p>
                   </div>
                 </Button>
 
                 <Button
                   variant="holy"
                   size="xl"
-                  className="w-full justify-start"
-                  onClick={() => handleConnect('Smart Wallet')}
-                  disabled={isConnecting}
+                  className="w-full justify-start opacity-50 cursor-not-allowed"
+                  disabled
                 >
                   <div className="w-8 h-8 rounded-full bg-angel-gold/20 flex items-center justify-center">
                     <WalletIcon className="w-5 h-5 text-primary" />
                   </div>
                   <div className="text-left flex-1">
                     <p className="font-semibold">Smart Wallet</p>
-                    <p className="text-xs text-muted-foreground">Tạo ví thông minh mới</p>
+                    <p className="text-xs text-muted-foreground">Sắp ra mắt</p>
                   </div>
                 </Button>
               </motion.div>
@@ -262,7 +289,7 @@ export default function Wallet() {
                       animate={{ rotate: 360 }}
                       transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                     />
-                    <span className="text-sm">Đang kết nối ví...</span>
+                    <span className="text-sm">Đang chờ xác nhận từ MetaMask...</span>
                   </div>
                 </motion.div>
               )}
