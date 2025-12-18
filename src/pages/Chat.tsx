@@ -511,7 +511,7 @@ export default function Chat() {
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header with Tabs */}
-          <div className="px-4 py-3 border-b border-angel-gold/10 bg-white/50 backdrop-blur-sm">
+          <div className="px-4 py-3 border-b border-angel-gold/10 bg-white/50 backdrop-blur-sm relative z-20">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {/* Mobile Sidebar Toggle */}
