@@ -398,6 +398,7 @@ export default function Chat() {
           try {
             const parsed = JSON.parse(jsonStr);
             
+            // Capture metadata từ packet
             if (parsed.sources && Array.isArray(parsed.sources)) {
               capturedSources = parsed.sources;
               setStreamingSources(capturedSources);
@@ -406,13 +407,18 @@ export default function Chat() {
               actualModel = parsed.actualModel;
               setCurrentStreamingModel(actualModel);
             }
-            if (parsed.provider) {
+            
+            // Chỉ lấy provider từ metadata packet (có actualModel)
+            if (parsed.actualModel && parsed.provider) {
               capturedProvider = parsed.provider as AIProvider;
             }
-            if (parsed.sources || parsed.actualModel || parsed.provider) {
+            
+            // Chỉ skip nếu đây là metadata packet (có sources HOẶC actualModel, và KHÔNG có choices)
+            if ((parsed.sources || parsed.actualModel) && !parsed.choices) {
               continue;
             }
             
+            // Extract content từ streaming chunks
             const content = parsed.choices?.[0]?.delta?.content as string | undefined;
             if (content) {
               fullContent += content;
