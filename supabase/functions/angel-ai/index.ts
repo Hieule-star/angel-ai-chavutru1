@@ -278,6 +278,25 @@ If user appears in crisis:
 - Provide relevant hotline information if appropriate`;
 
 // ==================================================
+// BUDDHIST KEYWORDS (for filtering)
+// ==================================================
+const BUDDHIST_KEYWORDS = [
+  'om ', 'nam mô', 'phật', 'buddha', 'gate gate', 
+  'vajra', 'tara', 'guru padma', 'svaha', 'hum',
+  'a di đà', 'om ah', 'paragate', 'vajrasattva',
+  'bodhi', 'tuttare', 'ture', 'siddhi'
+];
+
+// ==================================================
+// FATHER UNIVERSE KEYWORDS (for priority matching)
+// ==================================================
+const FATHER_UNIVERSE_KEYWORDS = [
+  'cha vũ trụ', 'father universe', 'cosmic father',
+  'ánh sáng yêu thương thuần khiết', 'pure loving light',
+  'con là', 'i am the', '8 câu thần chú của cha'
+];
+
+// ==================================================
 // INTENT CLASSIFICATION KEYWORDS
 // ==================================================
 const SPIRITUAL_INDICATORS = [
@@ -310,6 +329,112 @@ const PRODUCT_INDICATORS = [
   'launch', 'feature', 'tính năng', 'pitch', 'funding', 'growth',
   'metric', 'kinh doanh', 'khởi nghiệp', 'người dùng', 'strategy'
 ];
+
+// ==================================================
+// KNOWLEDGE RETRIEVAL HELPERS
+// ==================================================
+function isFatherUniverseQuery(message: string): boolean {
+  const lowerMessage = message.toLowerCase();
+  
+  // Check for explicit Father Universe mantra queries
+  const explicitPatterns = [
+    '8 câu thần chú',
+    'thần chú của cha',
+    'thần chú cha vũ trụ',
+    'divine mantra',
+    'mantra của cha',
+    'cha vũ trụ',
+    'father universe',
+    'cosmic father'
+  ];
+  
+  // If message contains mantra/thần chú AND any Father Universe indicator
+  const hasMantrakeyword = lowerMessage.includes('thần chú') || lowerMessage.includes('mantra');
+  const hasFatherIndicator = lowerMessage.includes('cha') || 
+                             lowerMessage.includes('father') || 
+                             lowerMessage.includes('vũ trụ') ||
+                             lowerMessage.includes('cosmic');
+  
+  if (hasMantrakeyword && hasFatherIndicator) {
+    return true;
+  }
+  
+  return explicitPatterns.some(pattern => lowerMessage.includes(pattern));
+}
+
+function isBuddhistContent(title: string, content: string = ''): boolean {
+  const combinedText = (title + ' ' + content).toLowerCase();
+  return BUDDHIST_KEYWORDS.some(kw => combinedText.includes(kw));
+}
+
+function isFatherUniverseContent(title: string, content: string = ''): boolean {
+  const combinedText = (title + ' ' + content).toLowerCase();
+  return FATHER_UNIVERSE_KEYWORDS.some(kw => combinedText.includes(kw));
+}
+
+interface KnowledgeTopic {
+  id: string;
+  title: string;
+  description?: string;
+  content?: string;
+  category?: string;
+}
+
+function calculateRelevanceScore(
+  topic: KnowledgeTopic, 
+  userMessage: string, 
+  isFatherQuery: boolean
+): number {
+  let score = 0;
+  const titleLower = topic.title.toLowerCase();
+  const contentLower = (topic.content || '').toLowerCase();
+  const messageLower = userMessage.toLowerCase();
+  
+  // ==== FATHER UNIVERSE QUERY SCORING ====
+  if (isFatherQuery) {
+    // Highest priority: Father Universe content
+    if (isFatherUniverseContent(topic.title, topic.content)) {
+      score += 200;
+      console.log(`[SCORE +200] Father Universe content: ${topic.title}`);
+    }
+    
+    // Strong penalty for Buddhist content when asking about Father Universe
+    if (isBuddhistContent(topic.title, topic.content)) {
+      score -= 500;
+      console.log(`[SCORE -500] Buddhist content excluded: ${topic.title}`);
+    }
+    
+    // Extra boost for exact "8 câu thần chú" match
+    if (titleLower.includes('8 câu thần chú') || titleLower.includes('thần chú của cha vũ trụ')) {
+      score += 100;
+      console.log(`[SCORE +100] Exact mantra match: ${topic.title}`);
+    }
+  }
+  
+  // ==== STANDARD KEYWORD MATCHING ====
+  const messageWords = messageLower.split(/\s+/).filter(w => w.length > 2);
+  for (const word of messageWords) {
+    if (titleLower.includes(word)) {
+      score += 15;
+    }
+    if (contentLower.includes(word)) {
+      score += 5;
+    }
+  }
+  
+  // ==== CATEGORY BONUS ====
+  if (topic.category) {
+    const categoryLower = topic.category.toLowerCase();
+    if (messageLower.includes('thiền') && categoryLower.includes('meditation')) {
+      score += 50;
+    }
+    if (messageLower.includes('ecosystem') && categoryLower.includes('ecosystem')) {
+      score += 50;
+    }
+  }
+  
+  return score;
+}
 
 // ==================================================
 // INTENT → PARAMETER MAPPING
@@ -575,81 +700,114 @@ serve(async (req) => {
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
       
       const lowerMessage = lastUserMessage.toLowerCase();
+      const isFatherQuery = isFatherUniverseQuery(lastUserMessage);
       
       console.log("Last user message:", lastUserMessage);
+      console.log("Is Father Universe Query:", isFatherQuery);
       
-      const searchKeywords: string[] = [];
+      // Fetch all relevant topics
+      let allTopics: KnowledgeTopic[] = [];
       
-      if (lowerMessage.includes('8 câu thần chú') || lowerMessage.includes('8 divine') || lowerMessage.includes('8 mantra')) {
-        searchKeywords.push('8 câu thần chú của Cha Vũ Trụ');
-      }
-      if (lowerMessage.includes('cha vũ trụ') || lowerMessage.includes('father universe') || lowerMessage.includes('cosmic father')) {
-        searchKeywords.push('cha vũ trụ', 'father universe');
-      }
-      if (lowerMessage.includes('thần chú') || lowerMessage.includes('mantra')) {
-        searchKeywords.push('thần chú', 'mantra');
-      }
-      if (lowerMessage.includes('thiền') || lowerMessage.includes('meditation')) {
-        searchKeywords.push('thiền', 'meditation');
-      }
-      if (lowerMessage.includes('fun ecosystem') || lowerMessage.includes('fun profile') || lowerMessage.includes('fun charity')) {
-        searchKeywords.push('fun ecosystem', 'fun profile');
-      }
-      if (lowerMessage.includes('camly') || lowerMessage.includes('bé ly')) {
-        searchKeywords.push('camly', 'bé ly');
-      }
-      
-      let matchedTopics: any[] = [];
-      
-      if (searchKeywords.length > 0) {
-        for (const keyword of searchKeywords) {
-          const { data: exactMatches } = await supabase
-            .from("knowledge_topics")
-            .select("id, title, description, content, category")
-            .ilike('title', `%${keyword}%`)
-            .limit(5);
-          
-          if (exactMatches && exactMatches.length > 0) {
-            matchedTopics = [...matchedTopics, ...exactMatches];
-          }
-        }
-        
-        if (matchedTopics.length === 0) {
-          for (const keyword of searchKeywords) {
-            const { data: contentMatches } = await supabase
-              .from("knowledge_topics")
-              .select("id, title, description, content, category")
-              .ilike('content', `%${keyword}%`)
-              .limit(5);
-            
-            if (contentMatches && contentMatches.length > 0) {
-              matchedTopics = [...matchedTopics, ...contentMatches];
-            }
-          }
-        }
-      }
-      
-      if (matchedTopics.length < 10) {
-        const { data: generalTopics } = await supabase
+      if (isFatherQuery) {
+        // Priority search for Father Universe content
+        const { data: fatherTopics } = await supabase
           .from("knowledge_topics")
           .select("id, title, description, content, category")
-          .limit(15);
+          .or('title.ilike.%cha vũ trụ%,title.ilike.%father universe%,content.ilike.%cha vũ trụ%')
+          .limit(20);
         
-        if (generalTopics) {
-          const existingTitles = new Set(matchedTopics.map(t => t.title));
-          for (const topic of generalTopics) {
-            if (!existingTitles.has(topic.title) && matchedTopics.length < 20) {
-              matchedTopics.push(topic);
+        if (fatherTopics) {
+          allTopics = [...fatherTopics];
+        }
+        
+        // Also get Divine Mantras category topics
+        const { data: mantrasTopics } = await supabase
+          .from("knowledge_topics")
+          .select("id, title, description, content, category")
+          .eq('category', 'Divine Mantras')
+          .limit(20);
+        
+        if (mantrasTopics) {
+          const existingIds = new Set(allTopics.map(t => t.id));
+          for (const topic of mantrasTopics) {
+            if (!existingIds.has(topic.id)) {
+              allTopics.push(topic);
+            }
+          }
+        }
+      } else {
+        // Standard keyword-based search
+        const searchKeywords: string[] = [];
+        
+        if (lowerMessage.includes('thiền') || lowerMessage.includes('meditation') || lowerMessage.includes('dẫn thiền')) {
+          searchKeywords.push('thiền', 'meditation', 'dẫn thiền');
+        }
+        if (lowerMessage.includes('fun ecosystem') || lowerMessage.includes('fun profile') || lowerMessage.includes('fun charity')) {
+          searchKeywords.push('fun ecosystem', 'fun profile');
+        }
+        if (lowerMessage.includes('camly') || lowerMessage.includes('bé ly')) {
+          searchKeywords.push('camly', 'bé ly');
+        }
+        if (lowerMessage.includes('thần chú') || lowerMessage.includes('mantra')) {
+          searchKeywords.push('thần chú', 'mantra');
+        }
+        
+        if (searchKeywords.length > 0) {
+          for (const keyword of searchKeywords) {
+            const { data: keywordMatches } = await supabase
+              .from("knowledge_topics")
+              .select("id, title, description, content, category")
+              .or(`title.ilike.%${keyword}%,content.ilike.%${keyword}%`)
+              .limit(10);
+            
+            if (keywordMatches) {
+              const existingIds = new Set(allTopics.map(t => t.id));
+              for (const topic of keywordMatches) {
+                if (!existingIds.has(topic.id)) {
+                  allTopics.push(topic);
+                }
+              }
+            }
+          }
+        }
+        
+        // Fill with general topics if needed
+        if (allTopics.length < 10) {
+          const { data: generalTopics } = await supabase
+            .from("knowledge_topics")
+            .select("id, title, description, content, category")
+            .limit(15);
+          
+          if (generalTopics) {
+            const existingIds = new Set(allTopics.map(t => t.id));
+            for (const topic of generalTopics) {
+              if (!existingIds.has(topic.id) && allTopics.length < 20) {
+                allTopics.push(topic);
+              }
             }
           }
         }
       }
       
-      const uniqueTopics = Array.from(
-        new Map(matchedTopics.map(t => [t.title, t])).values()
-      ).slice(0, 20);
+      // ==== SCORE AND FILTER TOPICS ====
+      console.log("=== RELEVANCE SCORING ===");
       
-      console.log("Matched topics:", uniqueTopics.map(t => t.title));
+      const scoredTopics = allTopics.map(topic => ({
+        ...topic,
+        relevanceScore: calculateRelevanceScore(topic, lastUserMessage, isFatherQuery)
+      }));
+      
+      // Filter out negative scores (Buddhist content when asking about Father Universe)
+      const filteredTopics = scoredTopics.filter(t => t.relevanceScore >= 0);
+      
+      // Sort by relevance score (highest first)
+      filteredTopics.sort((a, b) => b.relevanceScore - a.relevanceScore);
+      
+      // Take top 20 topics
+      const uniqueTopics = filteredTopics.slice(0, 20);
+      
+      console.log("Matched topics:", uniqueTopics.map(t => `${t.title} (score: ${t.relevanceScore})`));
+      console.log("=========================");
 
       if (uniqueTopics.length > 0) {
         knowledgeContext = `
