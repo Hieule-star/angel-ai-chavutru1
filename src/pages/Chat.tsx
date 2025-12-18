@@ -654,28 +654,53 @@ export default function Chat() {
                       )}
                       {isLoading && !streamingContent && (
                         <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3 }}
                           className="flex gap-3"
                         >
                           <motion.div
-                            className="w-10 h-10 rounded-full overflow-hidden glow-soft"
-                            animate={{ scale: [1, 1.1, 1] }}
-                            transition={{ duration: 1, repeat: Infinity }}
+                            className="w-10 h-10 rounded-full overflow-hidden glow-soft flex-shrink-0"
+                            animate={{ 
+                              scale: [1, 1.05, 1],
+                              boxShadow: [
+                                '0 0 10px rgba(255, 179, 71, 0.3)',
+                                '0 0 20px rgba(255, 179, 71, 0.5)',
+                                '0 0 10px rgba(255, 179, 71, 0.3)'
+                              ]
+                            }}
+                            transition={{ duration: 2, repeat: Infinity }}
                           >
                             <img src={angelLogo} alt="ANGEL AI" className="w-full h-full" />
                           </motion.div>
-                          <div className="bg-white/80 rounded-2xl px-4 py-3 shadow-divine">
-                            <p className="text-xs text-angel-gold font-medium mb-1">ANGEL AI ✨</p>
-                            <div className="flex gap-1">
-                              {[0, 1, 2].map((i) => (
-                                <motion.div
-                                  key={i}
-                                  className="w-2 h-2 bg-angel-gold rounded-full"
-                                  animate={{ y: [0, -5, 0] }}
-                                  transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.15 }}
-                                />
-                              ))}
+                          <div className="bg-white/90 dark:bg-gray-800/90 rounded-2xl px-4 py-3 shadow-divine backdrop-blur-sm">
+                            <p className="text-xs text-angel-gold font-medium mb-2">ANGEL AI ✨</p>
+                            <div className="flex items-center gap-2">
+                              <div className="flex gap-1">
+                                {[0, 1, 2].map((i) => (
+                                  <motion.div
+                                    key={i}
+                                    className="w-2.5 h-2.5 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full"
+                                    animate={{ 
+                                      y: [0, -8, 0],
+                                      opacity: [0.5, 1, 0.5]
+                                    }}
+                                    transition={{ 
+                                      duration: 0.6, 
+                                      repeat: Infinity, 
+                                      delay: i * 0.15,
+                                      ease: "easeInOut"
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                              <motion.span 
+                                className="text-sm text-muted-foreground"
+                                animate={{ opacity: [0.5, 1, 0.5] }}
+                                transition={{ duration: 1.5, repeat: Infinity }}
+                              >
+                                Đang suy nghĩ...
+                              </motion.span>
                             </div>
                           </div>
                         </motion.div>
