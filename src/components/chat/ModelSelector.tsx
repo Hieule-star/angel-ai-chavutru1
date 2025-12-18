@@ -91,12 +91,12 @@ export function ModelSelector({
         variant="ghost"
         size="sm"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 text-xs h-8 px-3 bg-white/60 hover:bg-white/80 border border-angel-gold/20 rounded-full"
+        className="flex items-center gap-1 sm:gap-2 text-[11px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3 bg-white/60 hover:bg-white/80 border border-angel-gold/20 rounded-full"
       >
         <span className={currentMode.color}>{currentMode.icon}</span>
-        <span className="font-medium">{currentMode.name}</span>
-        <span className="text-muted-foreground">•</span>
-        <span className={currentProvider.color}>{currentProvider.icon}</span>
+        <span className="font-medium hidden xs:inline">{currentMode.name}</span>
+        <span className="hidden xs:inline text-muted-foreground">•</span>
+        <span className={`hidden xs:inline ${currentProvider.color}`}>{currentProvider.icon}</span>
         <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </Button>
 
@@ -109,7 +109,7 @@ export function ModelSelector({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-              className="absolute top-full right-0 mt-2 w-64 bg-white/95 backdrop-blur-xl rounded-xl border border-angel-gold/20 shadow-divine overflow-hidden z-50"
+              className="absolute top-full right-0 mt-2 w-56 sm:w-64 max-w-[calc(100vw-24px)] bg-white/95 backdrop-blur-xl rounded-xl border border-angel-gold/20 shadow-divine overflow-hidden z-50"
             >
               {/* Mode Selection */}
               <div className="p-2 border-b border-angel-gold/10">
