@@ -558,9 +558,11 @@ const PRONOUN_PATTERNS = {
 
 function detectPronounStyle(messages: Array<{ role: string; content: string }>): PronounStyle {
   // Scan through all user messages to find pronoun pattern
+  // IMPORTANT: Reverse order to prioritize the MOST RECENT message's pronoun style
   const userMessages = messages.filter(m => m.role === 'user');
+  const reversedMessages = [...userMessages].reverse();
   
-  for (const msg of userMessages) {
+  for (const msg of reversedMessages) {
     const lowerContent = msg.content.toLowerCase();
     
     // Check each pronoun pattern in order of priority
