@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, Sparkles, Brain, BookOpen, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { Zap, Sparkles, Brain, BookOpen, ChevronDown, ChevronUp, ExternalLink, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { ChatMessage, AIModel } from '@/types';
+import type { ChatMessage, AIModel, AIProvider } from '@/types';
 import angelLogo from '@/assets/angel-logo.png';
 
 interface ChatBubbleProps {
@@ -24,10 +24,18 @@ const getModelBadge = (model?: AIModel) => {
   }
 };
 
+const getProviderBadge = (provider?: AIProvider) => {
+  if (provider === 'openai') {
+    return { icon: <RefreshCw className="w-3 h-3" />, name: 'OpenAI Backup', color: 'text-orange-500 bg-orange-500/10' };
+  }
+  return null; // Default Lovable provider doesn't need badge
+};
+
 export function ChatBubble({ message }: ChatBubbleProps) {
   const [showSources, setShowSources] = useState(false);
   const isUser = message.role === 'user';
   const modelBadge = !isUser ? getModelBadge(message.model) : null;
+  const providerBadge = !isUser ? getProviderBadge(message.provider) : null;
   const hasSources = !isUser && message.sources && message.sources.length > 0;
 
   return (
@@ -63,12 +71,18 @@ export function ChatBubble({ message }: ChatBubbleProps) {
         } rounded-2xl px-4 py-3 backdrop-blur-sm`}
       >
         {!isUser && (
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <p className="text-xs text-angel-gold font-medium">ANGEL AI ✨</p>
             {modelBadge && (
               <span className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-muted/50 ${modelBadge.color}`}>
                 {modelBadge.icon}
                 {modelBadge.name}
+              </span>
+            )}
+            {providerBadge && (
+              <span className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full ${providerBadge.color}`}>
+                {providerBadge.icon}
+                {providerBadge.name}
               </span>
             )}
           </div>

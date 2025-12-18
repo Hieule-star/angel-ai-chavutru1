@@ -15,7 +15,7 @@ import { useUserStore } from '@/stores/userStore';
 import { useGuestMessageLimit } from '@/hooks/useGuestMessageLimit';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import type { ChatMessage, AIModel, KnowledgeSource, SelectionMode, ChatSession } from '@/types';
+import type { ChatMessage, AIModel, KnowledgeSource, SelectionMode, ChatSession, AIProvider } from '@/types';
 import angelLogo from '@/assets/angel-logo.png';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/angel-ai`;
@@ -361,6 +361,7 @@ export default function Chat() {
       let fullContent = '';
       let capturedSources: KnowledgeSource[] = [];
       let actualModel: AIModel | undefined;
+      let capturedProvider: AIProvider | undefined;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -391,7 +392,10 @@ export default function Chat() {
               actualModel = parsed.actualModel;
               setCurrentStreamingModel(actualModel);
             }
-            if (parsed.sources || parsed.actualModel) {
+            if (parsed.provider) {
+              capturedProvider = parsed.provider as AIProvider;
+            }
+            if (parsed.sources || parsed.actualModel || parsed.provider) {
               continue;
             }
             
@@ -415,6 +419,7 @@ export default function Chat() {
         message: fullContent,
         timestamp: new Date().toISOString(),
         model: actualModel,
+        provider: capturedProvider,
         sources: capturedSources.length > 0 ? capturedSources : undefined,
         session_id: activeSessionId || undefined,
       };

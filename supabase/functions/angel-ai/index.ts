@@ -581,6 +581,49 @@ const SUPPORTED_MODELS = [
   "openai/gpt-5",
 ];
 
+// ==================================================
+// OPENAI FALLBACK CONFIGURATION
+// ==================================================
+const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+
+// Model mapping: Lovable AI → OpenAI equivalent
+const LOVABLE_TO_OPENAI_MODEL: Record<string, string> = {
+  'google/gemini-2.5-flash': 'gpt-4o-mini',
+  'google/gemini-2.5-pro': 'gpt-4o',
+  'openai/gpt-5-mini': 'gpt-4o-mini',
+  'openai/gpt-5': 'gpt-4o'
+};
+
+type AIProvider = 'lovable' | 'openai';
+
+// Function to call OpenAI API as fallback
+async function callOpenAI(
+  apiKey: string,
+  model: string,
+  messages: Array<{ role: string; content: string }>,
+  temperature: number,
+  maxTokens: number
+): Promise<Response> {
+  const openAIModel = LOVABLE_TO_OPENAI_MODEL[model] || 'gpt-4o-mini';
+  
+  console.log(`Calling OpenAI API with model: ${openAIModel}`);
+  
+  return fetch(OPENAI_API_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: openAIModel,
+      messages,
+      stream: true,
+      temperature,
+      max_tokens: maxTokens,
+    }),
+  });
+}
+
 const DEEP_KEYWORDS = [
   "triết học", "ý nghĩa cuộc sống", "vũ trụ quan", "bản chất", "ý nghĩa",
   "lập kế hoạch", "chiến lược", "phân tích", "so sánh", "đánh giá",
@@ -852,7 +895,19 @@ ${uniqueTopics
 
     console.log("Calling Lovable AI Gateway with model:", model, "messages:", messages.length);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // ==================================================
+    // DUAL PROVIDER: TRY LOVABLE AI FIRST, FALLBACK TO OPENAI
+    // ==================================================
+    let usedProvider: AIProvider = 'lovable';
+    let finalResponse: Response;
+    
+    const allMessages = [
+      { role: "system", content: fullSystemPrompt },
+      ...messages,
+    ];
+    
+    // Try Lovable AI Gateway first
+    const lovableResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -860,41 +915,74 @@ ${uniqueTopics
       },
       body: JSON.stringify({
         model,
-        messages: [
-          { role: "system", content: fullSystemPrompt },
-          ...messages, // [5] History + [6] User Message
-        ],
+        messages: allMessages,
         stream: true,
         temperature: intentParams.temperature,
         max_tokens: intentParams.maxTokens,
       }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+    // Check if we need to fallback to OpenAI
+    if (!lovableResponse.ok && (lovableResponse.status === 429 || lovableResponse.status === 402)) {
+      const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
       
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Quá nhiều yêu cầu, vui lòng thử lại sau." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
+      if (OPENAI_API_KEY) {
+        console.log(`Lovable AI unavailable (${lovableResponse.status}), falling back to OpenAI...`);
+        
+        const openAIResponse = await callOpenAI(
+          OPENAI_API_KEY,
+          model,
+          allMessages,
+          intentParams.temperature,
+          intentParams.maxTokens
+        );
+        
+        if (openAIResponse.ok) {
+          usedProvider = 'openai';
+          finalResponse = openAIResponse;
+          console.log("Successfully switched to OpenAI provider");
+        } else {
+          // Both providers failed
+          const errorText = await openAIResponse.text();
+          console.error("OpenAI fallback also failed:", openAIResponse.status, errorText);
+          return new Response(JSON.stringify({ 
+            error: "Cả hai hệ thống AI đều không khả dụng. Vui lòng thử lại sau.",
+            details: `Lovable: ${lovableResponse.status}, OpenAI: ${openAIResponse.status}`
+          }), {
+            status: 503,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      } else {
+        // No OpenAI key configured, return original error
+        console.log("No OPENAI_API_KEY configured for fallback");
+        if (lovableResponse.status === 429) {
+          return new Response(JSON.stringify({ error: "Quá nhiều yêu cầu, vui lòng thử lại sau." }), {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         return new Response(JSON.stringify({ error: "Đã hết hạn mức sử dụng AI." }), {
           status: 402,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      
+    } else if (!lovableResponse.ok) {
+      // Other errors (not 429/402)
+      const errorText = await lovableResponse.text();
+      console.error("AI gateway error:", lovableResponse.status, errorText);
       return new Response(JSON.stringify({ error: "AI gateway error" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    } else {
+      finalResponse = lovableResponse;
     }
 
+    console.log(`Final provider: ${usedProvider}, Model: ${model}`);
+
     // Create stream with metadata
-    const originalStream = response.body;
+    const originalStream = finalResponse.body;
     const encoder = new TextEncoder();
     
     const customStream = new ReadableStream({
@@ -903,6 +991,7 @@ ${uniqueTopics
         const metadataEvent = `data: ${JSON.stringify({ 
           sources: usedSources,
           actualModel: model,
+          provider: usedProvider,  // NEW: Shows which provider was used
           intent: detectedIntent,
           parameters: {
             temperature: intentParams.temperature,
