@@ -7,11 +7,11 @@ interface SuggestedQuestionsProps {
 
 export function SuggestedQuestions({ onSelect }: SuggestedQuestionsProps) {
   return (
-    <div className="space-y-3">
-      <p className="text-sm text-muted-foreground text-center">
+    <div className="space-y-2 sm:space-y-3">
+      <p className="text-xs sm:text-sm text-muted-foreground text-center">
         ✨ Gợi ý câu hỏi
       </p>
-      <div className="flex flex-wrap gap-2 justify-center">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2 justify-center px-1 sm:px-2">
         {suggestedQuestions.map((question, index) => (
           <motion.button
             key={index}
@@ -21,7 +21,7 @@ export function SuggestedQuestions({ onSelect }: SuggestedQuestionsProps) {
             whileHover={{ scale: 1.02, y: -2 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => onSelect(question)}
-            className="px-4 py-2 text-sm bg-white/60 hover:bg-white/80 border border-angel-gold/20 hover:border-angel-gold/40 rounded-full transition-all shadow-soft hover:shadow-divine"
+            className="px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-white/60 hover:bg-white/80 border border-angel-gold/20 hover:border-angel-gold/40 rounded-full transition-all shadow-soft hover:shadow-divine max-w-[calc(50%-4px)] sm:max-w-none truncate"
           >
             {question}
           </motion.button>

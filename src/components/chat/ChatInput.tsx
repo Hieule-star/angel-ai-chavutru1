@@ -22,14 +22,14 @@ export function ChatInput({ onSend, isLoading, disabled = false }: ChatInputProp
 
   return (
     <form onSubmit={handleSubmit} className="relative">
-      <div className="flex items-end gap-2 p-2 bg-white/80 backdrop-blur-xl rounded-2xl border border-angel-gold/20 shadow-divine">
+      <div className="flex items-end gap-1.5 sm:gap-2 p-1.5 sm:p-2 bg-white/80 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-angel-gold/20 shadow-divine">
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="flex-shrink-0 text-muted-foreground hover:text-primary"
+          className="hidden xs:flex flex-shrink-0 text-muted-foreground hover:text-primary h-8 w-8 sm:h-9 sm:w-9"
         >
-          <Paperclip className="w-5 h-5" />
+          <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
         </Button>
 
         <textarea
@@ -41,9 +41,9 @@ export function ChatInput({ onSend, isLoading, disabled = false }: ChatInputProp
               handleSubmit(e);
             }
           }}
-          placeholder={disabled ? "Vui lòng đăng nhập để tiếp tục..." : "Gửi thông điệp đến ANGEL AI..."}
+          placeholder={disabled ? "Đăng nhập để tiếp tục..." : "Gửi thông điệp..."}
           disabled={disabled}
-          className="flex-1 min-h-[44px] max-h-[120px] px-3 py-3 bg-transparent border-0 resize-none focus:outline-none text-sm md:text-base placeholder:text-muted-foreground/60 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 min-h-[40px] sm:min-h-[44px] max-h-[100px] sm:max-h-[120px] px-2 sm:px-3 py-2.5 sm:py-3 bg-transparent border-0 resize-none focus:outline-none text-sm placeholder:text-muted-foreground/60 disabled:opacity-50 disabled:cursor-not-allowed"
           rows={1}
         />
 
@@ -53,17 +53,17 @@ export function ChatInput({ onSend, isLoading, disabled = false }: ChatInputProp
             variant="divine"
             size="icon"
             disabled={!message.trim() || isLoading || disabled}
-            className="flex-shrink-0 rounded-xl"
+            className="flex-shrink-0 rounded-lg sm:rounded-xl h-8 w-8 sm:h-9 sm:w-9"
           >
             {isLoading ? (
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
               >
-                <Sparkles className="w-5 h-5" />
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
               </motion.div>
             ) : (
-              <Send className="w-5 h-5" />
+              <Send className="w-4 h-4 sm:w-5 sm:h-5" />
             )}
           </Button>
         </motion.div>

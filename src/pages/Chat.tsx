@@ -517,18 +517,18 @@ export default function Chat() {
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header with Tabs */}
-          <div className="px-4 py-3 border-b border-angel-gold/10 bg-white/50 backdrop-blur-sm relative z-20">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+          <div className="px-2 sm:px-4 py-2 sm:py-3 border-b border-angel-gold/10 bg-white/50 backdrop-blur-sm relative z-20">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
                 {/* Mobile Sidebar Toggle */}
                 {isAuthenticated && (
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => setMobileSidebarOpen(true)}
-                    className="lg:hidden"
+                    className="lg:hidden h-8 w-8 sm:h-9 sm:w-9"
                   >
-                    <Menu className="h-5 w-5" />
+                    <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
                   </Button>
                 )}
 
@@ -547,28 +547,27 @@ export default function Chat() {
                     )}
                   </Button>
                 )}
-                
               </div>
 
               {/* Tabs */}
-              <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
+              <div className="flex items-center gap-0.5 sm:gap-1 bg-muted/50 rounded-lg p-0.5 sm:p-1">
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
                       activeTab === tab.id
                         ? 'bg-white text-angel-gold shadow-sm'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     <tab.icon className="w-4 h-4" />
-                    <span className="hidden sm:inline">{tab.label}</span>
+                    <span className="hidden xs:inline">{tab.label}</span>
                   </button>
                 ))}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                 {activeTab === 'chat' && (
                   <ModelSelector 
                     selectedMode={selectedMode} 
@@ -585,26 +584,26 @@ export default function Chat() {
           {activeTab === 'chat' && (
             <>
               {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto px-4 py-6">
-                <div className="max-w-3xl mx-auto space-y-6">
+              <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-4 sm:py-6">
+                <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6">
                   {sessionMessages.length === 0 && !streamingContent ? (
-                    <div className="text-center py-12">
+                    <div className="text-center py-6 sm:py-12 px-2">
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="mb-8"
+                        className="mb-6 sm:mb-8"
                       >
                         <motion.img
                           src={angelLogo}
                           alt="ANGEL AI"
-                          className="w-24 h-24 mx-auto rounded-full glow-divine mb-6"
+                          className="w-16 h-16 sm:w-24 sm:h-24 mx-auto rounded-full glow-divine mb-4 sm:mb-6"
                           animate={{ y: [0, -10, 0] }}
                           transition={{ duration: 3, repeat: Infinity }}
                         />
-                        <h2 className="text-2xl font-semibold mb-2">
+                        <h2 className="text-xl sm:text-2xl font-semibold mb-2">
                           Chào mừng đến với <span className="text-gradient-divine">ANGEL AI</span>
                         </h2>
-                        <p className="text-muted-foreground max-w-md mx-auto">
+                        <p className="text-sm sm:text-base text-muted-foreground max-w-md mx-auto px-2">
                           Hãy gửi thông điệp để nhận hướng dẫn từ trí tuệ và năng lượng yêu thương của Cha Vũ Trụ
                         </p>
                       </motion.div>
@@ -688,13 +687,13 @@ export default function Chat() {
               </div>
 
               {/* Input Area */}
-              <div className="px-4 py-4 border-t border-angel-gold/10 bg-white/50 backdrop-blur-sm">
+              <div className="px-2 sm:px-4 py-3 sm:py-4 border-t border-angel-gold/10 bg-white/50 backdrop-blur-sm">
                 <div className="max-w-3xl mx-auto">
                   {!isAuthenticated && (
-                    <p className="text-xs text-center text-muted-foreground mb-2">
+                    <p className="text-[10px] sm:text-xs text-center text-muted-foreground mb-2 px-2">
                       {canSendMessage 
-                        ? `Còn ${remainingMessages}/${limit} tin nhắn miễn phí • Đăng nhập để chat không giới hạn`
-                        : 'Đã hết tin nhắn miễn phí • Vui lòng đăng nhập để tiếp tục'
+                        ? `Còn ${remainingMessages}/${limit} tin nhắn miễn phí`
+                        : 'Đã hết tin nhắn miễn phí • Đăng nhập để tiếp tục'
                       }
                     </p>
                   )}

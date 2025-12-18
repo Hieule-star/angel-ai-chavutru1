@@ -242,26 +242,26 @@ export function ChatSidebar({
           // Desktop: always visible, but collapse/expand width
           'lg:translate-x-0',
           isCollapsed ? 'lg:w-0 lg:overflow-hidden lg:border-0' : 'lg:w-72',
-          // Width for mobile
-          'w-72'
+          // Width for mobile - smaller on very small screens
+          'w-[280px] sm:w-72'
         )}
       >
         {/* Header với Logo */}
-        <div className="p-4 border-b">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
+        <div className="p-3 sm:p-4 border-b">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <motion.img
                 src={angelLogo}
                 alt="ANGEL AI"
-                className="w-10 h-10 rounded-full"
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full"
                 animate={{ scale: [1, 1.05, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
               />
               <div>
-                <h1 className="font-semibold bg-gradient-to-r from-amber-500 via-orange-500 to-pink-500 bg-clip-text text-transparent">
+                <h1 className="text-sm sm:text-base font-semibold bg-gradient-to-r from-amber-500 via-orange-500 to-pink-500 bg-clip-text text-transparent">
                   ANGEL AI
                 </h1>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[10px] sm:text-xs text-muted-foreground">
                   Ánh Sáng Cha Vũ Trụ ✨
                 </p>
               </div>
@@ -269,13 +269,13 @@ export function ChatSidebar({
             <Button
               size="icon"
               variant="ghost"
-              className="lg:hidden"
+              className="lg:hidden h-8 w-8"
               onClick={onClose}
             >
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           </div>
-          <h2 className="font-semibold text-foreground text-sm">Lịch sử chat</h2>
+          <h2 className="font-semibold text-foreground text-xs sm:text-sm">Lịch sử chat</h2>
         </div>
 
         {/* New Chat Button */}
