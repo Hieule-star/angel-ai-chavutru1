@@ -117,7 +117,10 @@ export function ModelSelector({
                 {MODE_OPTIONS.map((mode) => (
                   <button
                     key={mode.id}
-                    onClick={() => onModeChange(mode.id)}
+                    onClick={() => {
+                      onModeChange(mode.id);
+                      setIsOpen(false);
+                    }}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
                       selectedMode === mode.id
                         ? 'bg-angel-gold/10'
