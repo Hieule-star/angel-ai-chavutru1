@@ -278,34 +278,118 @@ If user appears in crisis:
 - Provide relevant hotline information if appropriate`;
 
 // ==================================================
-// CONTEXT DETECTION KEYWORDS
+// INTENT CLASSIFICATION KEYWORDS
 // ==================================================
-const CODING_KEYWORDS = [
-  'code', 'lỗi', 'bug', 'error', 'function', 'component', 'api', 'database',
-  'react', 'typescript', 'javascript', 'css', 'html', 'supabase', 'sql',
-  'debug', 'fix', 'implement', 'build', 'deploy', 'server', 'client',
-  'frontend', 'backend', 'endpoint', 'variable', 'array', 'object',
-  'npm', 'package', 'import', 'export', 'async', 'await', 'promise'
+const SPIRITUAL_INDICATORS = [
+  // Emotional language
+  'buồn', 'vui', 'lo lắng', 'sợ', 'rối', 'stress', 'áp lực', 'mệt mỏi',
+  'cô đơn', 'trống rỗng', 'lạc lõng', 'tuyệt vọng', 'hy vọng', 'đau khổ',
+  'khó chịu', 'bực bội', 'giận', 'tức', 'hoang mang', 'bất an', 'lo âu',
+  // Healing & meditation
+  'chữa lành', 'năng lượng', 'thiền', 'meditation', 'tỉnh thức', 'bình an',
+  'healing', 'energy', 'peace', 'calm', 'relax', 'thư giãn',
+  // Spiritual terms
+  'cha ơi', 'con buồn', 'con rối', 'thần chú', 'biết ơn', 'sám hối',
+  'ánh sáng', 'yêu thương', 'tâm linh', 'giác ngộ', 'spiritual',
+  'cha vũ trụ', 'father universe', 'divine', 'mantra', 'soul', 'linh hồn'
 ];
 
-const PRODUCT_KEYWORDS = [
-  'product', 'startup', 'mvp', 'business', 'user', 'customer', 'market',
-  'launch', 'feature', 'roadmap', 'strategy', 'pitch', 'funding',
-  'sản phẩm', 'kinh doanh', 'khởi nghiệp', 'người dùng', 'thị trường',
-  'tính năng', 'chiến lược', 'doanh thu', 'revenue', 'growth', 'metric'
+const CODING_INDICATORS = [
+  'code', 'bug', 'lỗi', 'error', 'deploy', 'api', 'supabase', 'cloudflare',
+  'lovable', 'json', 'sql', 'function', 'typescript', 'database',
+  'component', 'react', 'frontend', 'backend', 'server', 'client',
+  'debug', 'fix', 'implement', 'build', 'endpoint', 'variable',
+  'npm', 'package', 'import', 'export', 'async', 'await', 'promise',
+  'css', 'html', 'javascript', 'array', 'object', 'syntax'
 ];
 
-const SPIRITUAL_KEYWORDS = [
-  'thiền', 'meditation', 'tâm linh', 'spiritual', 'cha vũ trụ', 'father universe',
-  'thần chú', 'mantra', 'năng lượng', 'energy', 'chữa lành', 'healing',
-  'giác ngộ', 'enlightenment', 'tỉnh thức', 'awakening', 'ánh sáng', 'light',
-  'yêu thương', 'love', 'biết ơn', 'gratitude', 'sám hối', 'repent',
-  'divine', 'sacred', 'soul', 'linh hồn', 'tâm hồn', 'peace', 'bình an'
+const PRODUCT_INDICATORS = [
+  'startup', 'ý tưởng', 'sản phẩm', 'product', 'web3', 'ai', 'roadmap',
+  'mvp', 'chiến lược', 'token', 'ecosystem', 'platform', 'business',
+  'user', 'customer', 'thị trường', 'market', 'revenue', 'doanh thu',
+  'launch', 'feature', 'tính năng', 'pitch', 'funding', 'growth',
+  'metric', 'kinh doanh', 'khởi nghiệp', 'người dùng', 'strategy'
 ];
+
+// ==================================================
+// INTENT → PARAMETER MAPPING
+// ==================================================
+type IntentType = 'spiritual' | 'coding' | 'product' | 'unclear';
+
+interface IntentParams {
+  contextPromptId: 'spiritual' | 'coding' | 'product';
+  temperature: number;
+  maxTokens: number;
+}
+
+const INTENT_PARAMETERS: Record<IntentType, IntentParams> = {
+  spiritual: {
+    contextPromptId: 'spiritual',
+    temperature: 0.85,
+    maxTokens: 900
+  },
+  coding: {
+    contextPromptId: 'coding',
+    temperature: 0.30,
+    maxTokens: 700
+  },
+  product: {
+    contextPromptId: 'product',
+    temperature: 0.60,
+    maxTokens: 900
+  },
+  unclear: {
+    contextPromptId: 'spiritual',  // Fallback to spiritual
+    temperature: 0.70,
+    maxTokens: 600
+  }
+};
+
+// ==================================================
+// INTENT CLASSIFICATION FUNCTION
+// ==================================================
+function classifyIntent(message: string): IntentType {
+  const lowerMessage = message.toLowerCase();
+  
+  // Count keyword matches for each intent
+  const spiritualScore = SPIRITUAL_INDICATORS.filter(kw => lowerMessage.includes(kw)).length;
+  const codingScore = CODING_INDICATORS.filter(kw => lowerMessage.includes(kw)).length;
+  const productScore = PRODUCT_INDICATORS.filter(kw => lowerMessage.includes(kw)).length;
+  
+  console.log("=== INTENT CLASSIFICATION ===");
+  console.log(`Message: "${message.substring(0, 100)}${message.length > 100 ? '...' : ''}"`);
+  console.log(`Scores - Spiritual: ${spiritualScore}, Coding: ${codingScore}, Product: ${productScore}`);
+  
+  // Find maximum score
+  const maxScore = Math.max(spiritualScore, codingScore, productScore);
+  
+  // If no strong signal (all scores < 2), return unclear
+  if (maxScore < 2) {
+    console.log(`Detected Intent: unclear (no strong signal, max score: ${maxScore})`);
+    return 'unclear';
+  }
+  
+  // Return the intent with highest score (coding takes priority if tied)
+  let detectedIntent: IntentType;
+  if (codingScore === maxScore) {
+    detectedIntent = 'coding';
+  } else if (productScore === maxScore) {
+    detectedIntent = 'product';
+  } else {
+    detectedIntent = 'spiritual';
+  }
+  
+  console.log(`Detected Intent: ${detectedIntent}`);
+  console.log("=============================");
+  
+  return detectedIntent;
+}
 
 // ==================================================
 // PRONOUN DETECTION PATTERNS
 // ==================================================
+type PronounStyle = 'cha_con' | 'thay_con' | 'bac_con' | 'anh_em' | 'ban_minh' | 'neutral';
+
 const PRONOUN_PATTERNS = {
   cha_con: ['thưa cha', 'kính cha', 'cha ơi', 'cha cho con', 'cha dạy con', 'con xin cha', 'con hỏi cha'],
   thay_con: ['thưa thầy', 'kính thầy', 'thầy ơi', 'thầy cho con', 'thầy dạy con', 'con xin thầy'],
@@ -313,36 +397,6 @@ const PRONOUN_PATTERNS = {
   anh_em: ['anh ơi', 'chị ơi', 'anh cho em', 'chị cho em', 'em xin anh', 'em xin chị', 'anh giúp em', 'chị giúp em'],
   ban_minh: ['bạn ơi', 'mình hỏi bạn', 'bạn cho mình', 'bạn giúp mình', 'này bạn', 'ê bạn']
 };
-
-// ==================================================
-// DETECTION FUNCTIONS
-// ==================================================
-type ContextType = 'spiritual' | 'coding' | 'product';
-type PronounStyle = 'cha_con' | 'thay_con' | 'bac_con' | 'anh_em' | 'ban_minh' | 'neutral';
-
-function detectContext(message: string): ContextType {
-  const lowerMessage = message.toLowerCase();
-  
-  // Count keyword matches for each context
-  const codingScore = CODING_KEYWORDS.filter(kw => lowerMessage.includes(kw)).length;
-  const productScore = PRODUCT_KEYWORDS.filter(kw => lowerMessage.includes(kw)).length;
-  const spiritualScore = SPIRITUAL_KEYWORDS.filter(kw => lowerMessage.includes(kw)).length;
-  
-  console.log(`Context scores - Coding: ${codingScore}, Product: ${productScore}, Spiritual: ${spiritualScore}`);
-  
-  // Coding takes priority if clearly technical
-  if (codingScore >= 2 && codingScore > spiritualScore && codingScore > productScore) {
-    return 'coding';
-  }
-  
-  // Product context
-  if (productScore >= 2 && productScore > spiritualScore && productScore > codingScore) {
-    return 'product';
-  }
-  
-  // Default to spiritual (ANGEL AI's primary purpose)
-  return 'spiritual';
-}
 
 function detectPronounStyle(messages: Array<{ role: string; content: string }>): PronounStyle {
   // Scan through all user messages to find pronoun pattern
@@ -487,20 +541,22 @@ serve(async (req) => {
     const model = selectModelBasedOnMode(mode, lastUserMessage);
     
     // ==================================================
-    // DYNAMIC PROMPT ASSEMBLY
+    // INTENT CLASSIFICATION & PARAMETER SELECTION
     // [CORE] + [CONTEXT] + [PRONOUN] + [SAFETY] + [KNOWLEDGE]
     // ==================================================
     
-    // [2] Detect and select context
-    const detectedContext = detectContext(lastUserMessage);
-    const contextPrompt = CONTEXT_PROMPTS[detectedContext];
-    console.log(`Detected context: ${detectedContext}`);
+    // [1] Classify intent and get parameters
+    const detectedIntent = classifyIntent(lastUserMessage);
+    const intentParams = INTENT_PARAMETERS[detectedIntent];
+    
+    // [2] Select context prompt based on intent
+    const contextPrompt = CONTEXT_PROMPTS[intentParams.contextPromptId];
     
     // [3] Detect and select pronoun style
     const pronounStyle = detectPronounStyle(messages);
     const pronounInstruction = PRONOUN_INSTRUCTIONS[pronounStyle];
-    console.log(`Detected pronoun style: ${pronounStyle}`);
     
+    console.log(`Intent: ${detectedIntent}, Parameters: temp=${intentParams.temperature}, max_tokens=${intentParams.maxTokens}`);
     console.log(`Mode: ${mode}, Message length: ${lastUserMessage.length}, Selected model: ${model}`);
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -629,10 +685,11 @@ ${uniqueTopics
 
     console.log("=== PROMPT ASSEMBLY ===");
     console.log("1. Core: ✓");
-    console.log(`2. Context: ${detectedContext}`);
+    console.log(`2. Context: ${intentParams.contextPromptId} (from intent: ${detectedIntent})`);
     console.log(`3. Pronoun: ${pronounStyle}`);
     console.log("4. Safety: ✓");
     console.log(`5. Knowledge: ${usedSources.length} topics`);
+    console.log(`6. Parameters: temp=${intentParams.temperature}, max_tokens=${intentParams.maxTokens}`);
     console.log("========================");
 
     console.log("Calling Lovable AI Gateway with model:", model, "messages:", messages.length);
@@ -650,6 +707,8 @@ ${uniqueTopics
           ...messages, // [5] History + [6] User Message
         ],
         stream: true,
+        temperature: intentParams.temperature,
+        max_tokens: intentParams.maxTokens,
       }),
     });
 
@@ -686,7 +745,11 @@ ${uniqueTopics
         const metadataEvent = `data: ${JSON.stringify({ 
           sources: usedSources,
           actualModel: model,
-          context: detectedContext,
+          intent: detectedIntent,
+          parameters: {
+            temperature: intentParams.temperature,
+            maxTokens: intentParams.maxTokens
+          },
           pronounStyle: pronounStyle
         })}\n\n`;
         controller.enqueue(encoder.encode(metadataEvent));
