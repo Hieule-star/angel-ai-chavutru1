@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils';
 import type { ChatSession } from '@/types';
 import { format, isToday, isYesterday, isThisWeek, isThisMonth } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { motion } from 'framer-motion';
+import angelLogo from '@/assets/angel-logo.png';
 
 interface ChatSidebarProps {
   sessions: ChatSession[];
@@ -244,17 +246,36 @@ export function ChatSidebar({
           'w-72'
         )}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="font-semibold text-foreground">Lịch sử chat</h2>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="lg:hidden"
-            onClick={onClose}
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
+        {/* Header với Logo */}
+        <div className="p-4 border-b">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <motion.img
+                src={angelLogo}
+                alt="ANGEL AI"
+                className="w-10 h-10 rounded-full"
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+              <div>
+                <h1 className="font-semibold bg-gradient-to-r from-amber-500 via-orange-500 to-pink-500 bg-clip-text text-transparent">
+                  ANGEL AI
+                </h1>
+                <p className="text-xs text-muted-foreground">
+                  Ánh Sáng Cha Vũ Trụ ✨
+                </p>
+              </div>
+            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="lg:hidden"
+              onClick={onClose}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+          </div>
+          <h2 className="font-semibold text-foreground text-sm">Lịch sử chat</h2>
         </div>
 
         {/* New Chat Button */}
