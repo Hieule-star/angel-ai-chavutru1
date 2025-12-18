@@ -15,7 +15,7 @@ import { useUserStore } from '@/stores/userStore';
 import { useGuestMessageLimit } from '@/hooks/useGuestMessageLimit';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import type { ChatMessage, AIModel, KnowledgeSource, SelectionMode, ChatSession, AIProvider } from '@/types';
+import type { ChatMessage, AIModel, KnowledgeSource, SelectionMode, ChatSession, AIProvider, ProviderPreference } from '@/types';
 import angelLogo from '@/assets/angel-logo.png';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/angel-ai`;
@@ -31,6 +31,14 @@ const getStoredMode = (): SelectionMode => {
   return 'auto';
 };
 
+const getStoredProvider = (): ProviderPreference => {
+  const stored = localStorage.getItem('angel-ai-provider');
+  if (stored && ['auto', 'lovable', 'openai'].includes(stored)) {
+    return stored as ProviderPreference;
+  }
+  return 'auto';
+};
+
 export default function Chat() {
   const [activeTab, setActiveTab] = useState<TabType>('chat');
   const [isLoading, setIsLoading] = useState(false);
@@ -38,6 +46,7 @@ export default function Chat() {
   const [streamingSources, setStreamingSources] = useState<KnowledgeSource[]>([]);
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [selectedMode, setSelectedMode] = useState<SelectionMode>(getStoredMode);
+  const [selectedProvider, setSelectedProvider] = useState<ProviderPreference>(getStoredProvider);
   const [currentStreamingModel, setCurrentStreamingModel] = useState<AIModel | undefined>();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
@@ -66,6 +75,11 @@ export default function Chat() {
   const handleModeChange = (mode: SelectionMode) => {
     setSelectedMode(mode);
     localStorage.setItem('angel-ai-mode', mode);
+  };
+
+  const handleProviderChange = (provider: ProviderPreference) => {
+    setSelectedProvider(provider);
+    localStorage.setItem('angel-ai-provider', provider);
   };
 
   const scrollToBottom = () => {
@@ -339,7 +353,7 @@ export default function Chat() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages: apiMessages, mode: selectedMode }),
+        body: JSON.stringify({ messages: apiMessages, mode: selectedMode, provider: selectedProvider }),
         signal: controller.signal,
       });
 
@@ -585,7 +599,12 @@ export default function Chat() {
                   </Button>
                 )}
                 {activeTab === 'chat' && (
-                  <ModelSelector selectedMode={selectedMode} onModeChange={handleModeChange} />
+                  <ModelSelector 
+                    selectedMode={selectedMode} 
+                    onModeChange={handleModeChange}
+                    selectedProvider={selectedProvider}
+                    onProviderChange={handleProviderChange}
+                  />
                 )}
               </div>
             </div>

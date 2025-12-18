@@ -691,7 +691,7 @@ serve(async (req) => {
       });
     }
 
-    const { messages, mode: requestedMode } = body;
+    const { messages, mode: requestedMode, provider: requestedProvider } = body;
     
     if (!messages || !Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: "Messages array is required" }), {
@@ -706,7 +706,14 @@ serve(async (req) => {
       ? requestedMode 
       : 'auto';
     
+    type ProviderPreference = 'auto' | 'lovable' | 'openai';
+    const providerPreference: ProviderPreference = ['auto', 'lovable', 'openai'].includes(requestedProvider)
+      ? requestedProvider
+      : 'auto';
+    
     const model = selectModelBasedOnMode(mode, lastUserMessage);
+    
+    console.log(`Provider preference: ${providerPreference}`);
     
     // ==================================================
     // INTENT CLASSIFICATION & PARAMETER SELECTION
@@ -893,10 +900,11 @@ ${uniqueTopics
     console.log(`6. Parameters: temp=${intentParams.temperature}, max_tokens=${intentParams.maxTokens}`);
     console.log("========================");
 
-    console.log("Calling Lovable AI Gateway with model:", model, "messages:", messages.length);
+    console.log("Provider preference:", providerPreference);
+    console.log("Calling AI with model:", model, "messages:", messages.length);
 
     // ==================================================
-    // DUAL PROVIDER: TRY LOVABLE AI FIRST, FALLBACK TO OPENAI
+    // PROVIDER SELECTION BASED ON USER PREFERENCE
     // ==================================================
     let usedProvider: AIProvider = 'lovable';
     let finalResponse: Response;
@@ -906,77 +914,151 @@ ${uniqueTopics
       ...messages,
     ];
     
-    // Try Lovable AI Gateway first
-    const lovableResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: allMessages,
-        stream: true,
-        temperature: intentParams.temperature,
-        max_tokens: intentParams.maxTokens,
-      }),
-    });
-
-    // Check if we need to fallback to OpenAI
-    if (!lovableResponse.ok && (lovableResponse.status === 429 || lovableResponse.status === 402)) {
-      const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    
+    // ==== CASE 1: User explicitly chose OpenAI ====
+    if (providerPreference === 'openai') {
+      if (!OPENAI_API_KEY) {
+        return new Response(JSON.stringify({ error: "OpenAI API key chưa được cấu hình." }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       
-      if (OPENAI_API_KEY) {
-        console.log(`Lovable AI unavailable (${lovableResponse.status}), falling back to OpenAI...`);
-        
-        const openAIResponse = await callOpenAI(
-          OPENAI_API_KEY,
+      console.log("User selected OpenAI provider directly");
+      const openAIResponse = await callOpenAI(
+        OPENAI_API_KEY,
+        model,
+        allMessages,
+        intentParams.temperature,
+        intentParams.maxTokens
+      );
+      
+      if (!openAIResponse.ok) {
+        const errorText = await openAIResponse.text();
+        console.error("OpenAI error:", openAIResponse.status, errorText);
+        return new Response(JSON.stringify({ error: "OpenAI API lỗi. Vui lòng thử lại." }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      usedProvider = 'openai';
+      finalResponse = openAIResponse;
+    }
+    // ==== CASE 2: User explicitly chose Lovable (no fallback) ====
+    else if (providerPreference === 'lovable') {
+      console.log("User selected Lovable provider directly (no fallback)");
+      const lovableResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
           model,
-          allMessages,
-          intentParams.temperature,
-          intentParams.maxTokens
-        );
+          messages: allMessages,
+          stream: true,
+          temperature: intentParams.temperature,
+          max_tokens: intentParams.maxTokens,
+        }),
+      });
+      
+      if (!lovableResponse.ok) {
+        const errorText = await lovableResponse.text();
+        console.error("Lovable AI error:", lovableResponse.status, errorText);
         
-        if (openAIResponse.ok) {
-          usedProvider = 'openai';
-          finalResponse = openAIResponse;
-          console.log("Successfully switched to OpenAI provider");
-        } else {
-          // Both providers failed
-          const errorText = await openAIResponse.text();
-          console.error("OpenAI fallback also failed:", openAIResponse.status, errorText);
-          return new Response(JSON.stringify({ 
-            error: "Cả hai hệ thống AI đều không khả dụng. Vui lòng thử lại sau.",
-            details: `Lovable: ${lovableResponse.status}, OpenAI: ${openAIResponse.status}`
-          }), {
-            status: 503,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-      } else {
-        // No OpenAI key configured, return original error
-        console.log("No OPENAI_API_KEY configured for fallback");
         if (lovableResponse.status === 429) {
           return new Response(JSON.stringify({ error: "Quá nhiều yêu cầu, vui lòng thử lại sau." }), {
             status: 429,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-        return new Response(JSON.stringify({ error: "Đã hết hạn mức sử dụng AI." }), {
-          status: 402,
+        if (lovableResponse.status === 402) {
+          return new Response(JSON.stringify({ error: "Đã hết hạn mức sử dụng AI." }), {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        
+        return new Response(JSON.stringify({ error: "AI gateway error" }), {
+          status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-    } else if (!lovableResponse.ok) {
-      // Other errors (not 429/402)
-      const errorText = await lovableResponse.text();
-      console.error("AI gateway error:", lovableResponse.status, errorText);
-      return new Response(JSON.stringify({ error: "AI gateway error" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    } else {
+      
+      usedProvider = 'lovable';
       finalResponse = lovableResponse;
+    }
+    // ==== CASE 3: Auto mode - Try Lovable first, fallback to OpenAI ====
+    else {
+      console.log("Auto mode: Try Lovable first, fallback to OpenAI if needed");
+      const lovableResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages: allMessages,
+          stream: true,
+          temperature: intentParams.temperature,
+          max_tokens: intentParams.maxTokens,
+        }),
+      });
+
+      // Check if we need to fallback to OpenAI
+      if (!lovableResponse.ok && (lovableResponse.status === 429 || lovableResponse.status === 402)) {
+        if (OPENAI_API_KEY) {
+          console.log(`Lovable AI unavailable (${lovableResponse.status}), falling back to OpenAI...`);
+          
+          const openAIResponse = await callOpenAI(
+            OPENAI_API_KEY,
+            model,
+            allMessages,
+            intentParams.temperature,
+            intentParams.maxTokens
+          );
+          
+          if (openAIResponse.ok) {
+            usedProvider = 'openai';
+            finalResponse = openAIResponse;
+            console.log("Successfully switched to OpenAI provider");
+          } else {
+            const errorText = await openAIResponse.text();
+            console.error("OpenAI fallback also failed:", openAIResponse.status, errorText);
+            return new Response(JSON.stringify({ 
+              error: "Cả hai hệ thống AI đều không khả dụng. Vui lòng thử lại sau.",
+              details: `Lovable: ${lovableResponse.status}, OpenAI: ${openAIResponse.status}`
+            }), {
+              status: 503,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        } else {
+          console.log("No OPENAI_API_KEY configured for fallback");
+          if (lovableResponse.status === 429) {
+            return new Response(JSON.stringify({ error: "Quá nhiều yêu cầu, vui lòng thử lại sau." }), {
+              status: 429,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          return new Response(JSON.stringify({ error: "Đã hết hạn mức sử dụng AI." }), {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      } else if (!lovableResponse.ok) {
+        const errorText = await lovableResponse.text();
+        console.error("AI gateway error:", lovableResponse.status, errorText);
+        return new Response(JSON.stringify({ error: "AI gateway error" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } else {
+        finalResponse = lovableResponse;
+      }
     }
 
     console.log(`Final provider: ${usedProvider}, Model: ${model}`);

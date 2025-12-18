@@ -13,6 +13,8 @@ export type SelectionMode = 'auto' | 'fast' | 'deep';
 
 export type AIProvider = 'lovable' | 'openai';
 
+export type ProviderPreference = 'auto' | 'lovable' | 'openai';
+
 export interface KnowledgeSource {
   id: string;
   title: string;
