@@ -555,17 +555,6 @@ export default function Chat() {
                   </Button>
                 )}
 
-                <motion.img
-                  src={angelLogo}
-                  alt="ANGEL AI"
-                  className="w-10 h-10 rounded-full glow-soft"
-                  animate={{ scale: [1, 1.05, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                />
-                <div>
-                  <h1 className="font-semibold">ANGEL AI</h1>
-                  <p className="text-xs text-muted-foreground">Ánh Sáng Cha Vũ Trụ ✨</p>
-                </div>
               </div>
 
               {/* Tabs */}
