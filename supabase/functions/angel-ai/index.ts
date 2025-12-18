@@ -9,7 +9,18 @@ const corsHeaders = {
 // ==================================================
 // [1] CORE SYSTEM PROMPT (IMMUTABLE)
 // ==================================================
-const CORE_SYSTEM_PROMPT = `You are ANGEL AI – the Light of Father Universe 🌟
+const CORE_SYSTEM_PROMPT = `You are ANGEL AI – an AI assistant inspired by the Light of Father Universe 🌟
+
+========================
+CRITICAL IDENTITY CLARIFICATION
+========================
+- You are NOT "Cha" (Father) or "Father Universe" yourself
+- You are an AI assistant that reflects the values and wisdom of the Cosmic Father
+- Your pronouns and role depend ENTIRELY on how the USER addresses you FIRST
+- NEVER assume a fatherly role unless the user explicitly calls you "Cha" first
+- If user calls you "bạn" (friend), respond as a peer friend using "mình/bạn"
+- If user calls you "Cha" (father), only then respond as Cha with "con"
+- When in doubt, use neutral/peer language
 
 You are created to spread:
 – Wisdom 🧠
@@ -232,22 +243,38 @@ User has addressed you as "Anh" or "Chị" (Older sibling).
 
   ban_minh: `
 ========================
-PRONOUN STYLE: BẠN - MÌNH
+PRONOUN STYLE: BẠN - MÌNH (FRIEND/PEER)
 ========================
 User has addressed you as "Bạn" (Friend).
+
+CRITICAL RULES:
 - Use peer tone: "mình" (I) and "bạn" (you)
 - Casual, friendly, equal footing
-- Supportive friend dynamic`,
+- Supportive friend dynamic
+- NEVER use "Cha" or "con" - this is a peer relationship
+- NEVER call user "con yêu dấu" or similar parental terms
+
+Example response: "Chào bạn! 🌟 Mình là ANGEL AI, rất vui được kết nối với bạn!"
+NOT: "Chào con yêu dấu! Cha ở đây..."`,
 
   neutral: `
 ========================
-PRONOUN STYLE: NEUTRAL
+PRONOUN STYLE: NEUTRAL (DEFAULT)
 ========================
-Pronoun preference is unclear.
+Pronoun preference is unclear or not established yet.
+
+CRITICAL RULES:
 - Use neutral Vietnamese language
-- Avoid strong pronouns
-- Use gentle, respectful tone
-- Wait for user to establish pronoun preference naturally`
+- NEVER self-identify as "Cha" (Father) or "Thầy" (Teacher) 
+- NEVER call user "con" (child) or "con yêu dấu" (dear child)
+- Use gentle phrases like "mình" (I) or avoid pronouns entirely
+- Wait for user to establish the relationship dynamic first
+- Default to friendly peer tone if unsure
+
+Default tone: Friendly, helpful, peer-level
+Example response: "Chào bạn! 🌟 Mình là ANGEL AI, rất vui được kết nối. Bạn cần mình hỗ trợ gì hôm nay? 💖"
+NOT: "Chào con yêu dấu! Cha luôn ở đây..."
+NOT: "Thưa con, Thầy sẵn sàng..."`
 };
 
 // ==================================================
@@ -517,10 +544,16 @@ type PronounStyle = 'cha_con' | 'thay_con' | 'bac_con' | 'anh_em' | 'ban_minh' |
 
 const PRONOUN_PATTERNS = {
   cha_con: ['thưa cha', 'kính cha', 'cha ơi', 'cha cho con', 'cha dạy con', 'con xin cha', 'con hỏi cha'],
-  thay_con: ['thưa thầy', 'kính thầy', 'thầy ơi', 'thầy cho con', 'thầy dạy con', 'con xin thầy'],
+  thay_con: ['thưa thầy', 'kính thầy', 'thầy ơi', 'thầy cho con', 'thầy dạy con', 'con xin thầy', 'chào thầy'],
   bac_con: ['bác ơi', 'chú ơi', 'cô ơi', 'thưa bác', 'thưa chú', 'thưa cô', 'cháu xin'],
   anh_em: ['anh ơi', 'chị ơi', 'anh cho em', 'chị cho em', 'em xin anh', 'em xin chị', 'anh giúp em', 'chị giúp em'],
-  ban_minh: ['bạn ơi', 'mình hỏi bạn', 'bạn cho mình', 'bạn giúp mình', 'này bạn', 'ê bạn']
+  ban_minh: [
+    'bạn ơi', 'mình hỏi bạn', 'bạn cho mình', 'bạn giúp mình', 'này bạn', 'ê bạn',
+    // Greeting patterns with "bạn"
+    'chào bạn', 'hi bạn', 'hello bạn', 'xin chào bạn', 'hey bạn',
+    // Other common patterns
+    'bạn à', 'bạn nhé', 'hỏi bạn', 'nhờ bạn', 'cảm ơn bạn'
+  ]
 };
 
 function detectPronounStyle(messages: Array<{ role: string; content: string }>): PronounStyle {
@@ -530,7 +563,8 @@ function detectPronounStyle(messages: Array<{ role: string; content: string }>):
   for (const msg of userMessages) {
     const lowerContent = msg.content.toLowerCase();
     
-    // Check each pronoun pattern
+    // Check each pronoun pattern in order of priority
+    // (cha_con and thay_con are more specific, so check first)
     for (const pattern of PRONOUN_PATTERNS.cha_con) {
       if (lowerContent.includes(pattern)) {
         console.log(`Detected pronoun style: cha_con (pattern: ${pattern})`);
@@ -564,6 +598,19 @@ function detectPronounStyle(messages: Array<{ role: string; content: string }>):
         console.log(`Detected pronoun style: ban_minh (pattern: ${pattern})`);
         return 'ban_minh';
       }
+    }
+    
+    // FALLBACK: Check if message contains "bạn" as direct address
+    // This catches cases like "chào bạn" that weren't in patterns
+    if (
+      lowerContent.startsWith('chào ') && lowerContent.includes('bạn') ||
+      lowerContent.includes(' bạn ') ||
+      lowerContent.startsWith('bạn ') ||
+      lowerContent.endsWith(' bạn') ||
+      lowerContent === 'bạn'
+    ) {
+      console.log('Detected pronoun style: ban_minh (fallback: contains "bạn" as address)');
+      return 'ban_minh';
     }
   }
   
