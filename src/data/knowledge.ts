@@ -64,4 +64,6 @@ export const suggestedQuestions = [
   'Làm sao để phát triển linh hồn mỗi ngày?',
   'Con muốn hiểu về FUN Ecosystem',
   'Tặng con một thông điệp yêu thương',
+  'Mantra nào giúp con thanh lọc năng lượng?',
+  'Hướng dẫn con đọc mantras mỗi ngày',
 ];

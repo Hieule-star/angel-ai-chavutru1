@@ -10,6 +10,8 @@ import { ModelSelector } from '@/components/chat/ModelSelector';
 import { ImageGenerator } from '@/components/chat/ImageGenerator';
 import { VideoGenerator } from '@/components/chat/VideoGenerator';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
+import { DailyAffirmation } from '@/components/chat/DailyAffirmation';
+import { MantraSuggestion } from '@/components/chat/MantraSuggestion';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useUserStore } from '@/stores/userStore';
@@ -18,6 +20,7 @@ import { useOnboardingCheck } from '@/hooks/useOnboardingCheck';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { ChatMessage, AIModel, KnowledgeSource, SelectionMode, ChatSession, AIProvider, ProviderPreference } from '@/types';
+import { getRandomMantra, type DivineMantra } from '@/data/divineMantras';
 import angelLogo from '@/assets/angel-logo.png';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/angel-ai`;
@@ -57,6 +60,11 @@ export default function Chat() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [sessionMessages, setSessionMessages] = useState<ChatMessage[]>([]);
+  
+  // Daily Affirmation & Mantra state
+  const [showDailyAffirmation, setShowDailyAffirmation] = useState(true);
+  const [suggestedMantra, setSuggestedMantra] = useState<DivineMantra | null>(null);
+  const [messageCountForMantra, setMessageCountForMantra] = useState(0);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { 
@@ -176,6 +184,9 @@ export default function Chat() {
   };
 
   const handleNewChat = async () => {
+    setShowDailyAffirmation(true);
+    setSuggestedMantra(null);
+    setMessageCountForMantra(0);
     if (!isAuthenticated) {
       setSessionMessages([]);
       setCurrentSessionId(null);
@@ -183,6 +194,27 @@ export default function Chat() {
     }
     await createNewSession();
   };
+
+  const handleStartChatFromAffirmation = () => {
+    setShowDailyAffirmation(false);
+  };
+
+  const handleAskAboutMantra = (mantra: DivineMantra) => {
+    setShowDailyAffirmation(false);
+    handleSendMessage(`Hãy giải thích ý nghĩa và cách đọc mantra "${mantra.original}" cho con`);
+  };
+
+  const handleDismissMantraSuggestion = () => {
+    setSuggestedMantra(null);
+  };
+
+  // Show mantra suggestion after every 5 messages
+  useEffect(() => {
+    if (sessionMessages.length > 0 && sessionMessages.length % 5 === 0 && !suggestedMantra) {
+      const randomMantra = getRandomMantra();
+      setSuggestedMantra(randomMantra);
+    }
+  }, [sessionMessages.length]);
 
   const handleSelectSession = async (sessionId: string) => {
     setCurrentSessionId(sessionId);
@@ -622,18 +654,28 @@ export default function Chat() {
                       <motion.img
                         src={angelLogo}
                         alt="ANGEL AI"
-                        className="w-16 h-16 sm:w-24 sm:h-24 mx-auto rounded-full glow-divine mb-4 sm:mb-6"
+                        className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full glow-divine mb-4 sm:mb-6"
                         animate={{ y: [0, -10, 0] }}
                         transition={{ duration: 3, repeat: Infinity }}
                       />
-                      <h2 className="text-xl sm:text-2xl font-semibold mb-2">
-                        Hôm nay bạn muốn làm gì?
-                      </h2>
-                      <p className="text-sm sm:text-base text-muted-foreground max-w-md mx-auto px-2">
-                        Hãy gửi thông điệp để nhận hướng dẫn từ trí tuệ và năng lượng yêu thương của Cha Vũ Trụ
-                      </p>
+                      
+                      {showDailyAffirmation ? (
+                        <DailyAffirmation
+                          onStartChat={handleStartChatFromAffirmation}
+                          onAskAboutMantra={handleAskAboutMantra}
+                        />
+                      ) : (
+                        <>
+                          <h2 className="text-xl sm:text-2xl font-semibold mb-2">
+                            Hôm nay bạn muốn làm gì?
+                          </h2>
+                          <p className="text-sm sm:text-base text-muted-foreground max-w-md mx-auto px-2 mb-6">
+                            Hãy gửi thông điệp để nhận hướng dẫn từ trí tuệ và năng lượng yêu thương của Cha Vũ Trụ
+                          </p>
+                          <SuggestedQuestions onSelect={handleSendMessage} />
+                        </>
+                      )}
                     </motion.div>
-                    <SuggestedQuestions onSelect={handleSendMessage} />
                   </div>
                 ) : (
                   <>
@@ -705,6 +747,15 @@ export default function Chat() {
                           </div>
                         </div>
                       </motion.div>
+                    )}
+                    
+                    {/* Mantra Suggestion */}
+                    {suggestedMantra && !isLoading && !streamingContent && (
+                      <MantraSuggestion
+                        mantra={suggestedMantra}
+                        onAsk={handleSendMessage}
+                        onDismiss={handleDismissMantraSuggestion}
+                      />
                     )}
                   </>
                 )}
