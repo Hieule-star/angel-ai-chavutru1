@@ -68,18 +68,6 @@ export default function Chat() {
   const { canSendMessage, remainingMessages, limit, incrementMessageCount, resetMessageCount } = useGuestMessageLimit();
   const { isChecking: isCheckingOnboarding } = useOnboardingCheck();
 
-  // Show loading while checking onboarding status
-  if (isCheckingOnboarding) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-divine">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Đang tải...</p>
-        </div>
-      </div>
-    );
-  }
-
   // Reset guest message count when user logs in
   useEffect(() => {
     if (isAuthenticated) {
@@ -496,6 +484,18 @@ export default function Chat() {
 
     setIsLoading(false);
   };
+
+  // Show loading while checking onboarding status
+  if (isCheckingOnboarding) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-divine">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Đang tải...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex bg-celestial">
