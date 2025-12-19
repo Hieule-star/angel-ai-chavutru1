@@ -478,22 +478,22 @@ const INTENT_PARAMETERS: Record<IntentType, IntentParams> = {
   spiritual: {
     contextPromptId: 'spiritual',
     temperature: 0.85,
-    maxTokens: 900
+    maxTokens: 2500
   },
   coding: {
     contextPromptId: 'coding',
     temperature: 0.30,
-    maxTokens: 700
+    maxTokens: 2000
   },
   product: {
     contextPromptId: 'product',
     temperature: 0.60,
-    maxTokens: 900
+    maxTokens: 2500
   },
   unclear: {
     contextPromptId: 'spiritual',  // Fallback to spiritual
     temperature: 0.70,
-    maxTokens: 600
+    maxTokens: 2000
   }
 };
 
