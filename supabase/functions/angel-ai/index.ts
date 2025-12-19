@@ -731,7 +731,7 @@ async function callOpenAI(
       model: openAIModel,
       messages,
       stream: true,
-      temperature,
+      ...(openAIModel.includes('gpt-5') || openAIModel.includes('o3') || openAIModel.includes('o4') ? {} : { temperature }),
       max_completion_tokens: maxTokens,
     }),
   });
@@ -1093,7 +1093,7 @@ ${uniqueTopics
           model,
           messages: allMessages,
           stream: true,
-          temperature: intentParams.temperature,
+          ...(model.includes('gpt-5') || model.includes('o3') || model.includes('o4') ? {} : { temperature: intentParams.temperature }),
           max_completion_tokens: intentParams.maxTokens,
         }),
       });
@@ -1137,7 +1137,7 @@ ${uniqueTopics
           model,
           messages: allMessages,
           stream: true,
-          temperature: intentParams.temperature,
+          ...(model.includes('gpt-5') || model.includes('o3') || model.includes('o4') ? {} : { temperature: intentParams.temperature }),
           max_completion_tokens: intentParams.maxTokens,
         }),
       });
