@@ -1,14 +1,24 @@
 import { useState } from 'react';
-import { Plus, MessageSquare, Trash2, Edit2, Check, X, ChevronLeft } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { 
+  Plus, MessageSquare, Trash2, Edit2, Check, X, ChevronLeft,
+  Home, User, Wallet, Code, ImageIcon, Video, MessageCircle,
+  Sparkles
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { ChatSession } from '@/types';
-import { format, isToday, isYesterday, isThisWeek, isThisMonth } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { isToday, isYesterday, isThisWeek, isThisMonth } from 'date-fns';
 import { motion } from 'framer-motion';
 import angelLogo from '@/assets/angel-logo.png';
+import { useUserStore } from '@/stores/userStore';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+type TabType = 'chat' | 'image' | 'video';
 
 interface ChatSidebarProps {
   sessions: ChatSession[];
@@ -20,6 +30,8 @@ interface ChatSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   isCollapsed?: boolean;
+  activeTab: TabType;
+  onTabChange: (tab: TabType) => void;
 }
 
 interface GroupedSessions {
@@ -210,6 +222,19 @@ function SessionGroup({
   );
 }
 
+const tabs = [
+  { id: 'chat' as const, label: 'Chat', icon: MessageCircle },
+  { id: 'image' as const, label: 'Tạo ảnh', icon: ImageIcon },
+  { id: 'video' as const, label: 'Tạo video', icon: Video },
+];
+
+const navLinks = [
+  { to: '/', label: 'Trang chủ', icon: Home },
+  { to: '/profile', label: 'Hồ sơ', icon: User },
+  { to: '/wallet', label: 'Ví', icon: Wallet },
+  { to: '/developers', label: 'Developers', icon: Code },
+];
+
 export function ChatSidebar({
   sessions,
   currentSessionId,
@@ -220,8 +245,12 @@ export function ChatSidebar({
   isOpen,
   onClose,
   isCollapsed = false,
+  activeTab,
+  onTabChange,
 }: ChatSidebarProps) {
   const groupedSessions = groupSessionsByDate(sessions);
+  const { user } = useUserStore();
+  const location = useLocation();
 
   return (
     <>
@@ -237,23 +266,20 @@ export function ChatSidebar({
       <aside
         className={cn(
           'fixed lg:static inset-y-0 left-0 z-50 bg-background border-r transform transition-all duration-300 ease-in-out flex flex-col',
-          // Mobile: slide in/out
           isOpen ? 'translate-x-0' : '-translate-x-full',
-          // Desktop: always visible, but collapse/expand width
           'lg:translate-x-0',
           isCollapsed ? 'lg:w-0 lg:overflow-hidden lg:border-0' : 'lg:w-72',
-          // Width for mobile - smaller on very small screens
           'w-[280px] sm:w-72'
         )}
       >
         {/* Header với Logo */}
         <div className="p-3 sm:p-4 border-b">
-          <div className="flex items-center justify-between mb-2 sm:mb-3">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-3">
               <motion.img
                 src={angelLogo}
                 alt="ANGEL AI"
-                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full"
                 animate={{ scale: [1, 1.05, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
               />
@@ -261,9 +287,6 @@ export function ChatSidebar({
                 <h1 className="text-sm sm:text-base font-semibold bg-gradient-to-r from-amber-500 via-orange-500 to-pink-500 bg-clip-text text-transparent">
                   ANGEL AI
                 </h1>
-                <p className="text-[10px] sm:text-xs text-muted-foreground">
-                  Ánh Sáng Cha Vũ Trụ ✨
-                </p>
               </div>
             </div>
             <Button
@@ -275,7 +298,6 @@ export function ChatSidebar({
               <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           </div>
-          <h2 className="font-semibold text-foreground text-xs sm:text-sm">Lịch sử chat</h2>
         </div>
 
         {/* New Chat Button */}
@@ -283,23 +305,53 @@ export function ChatSidebar({
           <Button
             onClick={() => {
               onNewChat();
+              onTabChange('chat');
               onClose();
             }}
-            className="w-full gap-2"
+            className="w-full gap-2 justify-start"
             variant="outline"
           >
             <Plus className="h-4 w-4" />
-            Cuộc trò chuyện mới
+            Đoạn chat mới
           </Button>
         </div>
 
+        {/* Tabs - Chat / Image / Video */}
+        <div className="px-3 space-y-1">
+          {tabs.map((tab) => (
+            <Button
+              key={tab.id}
+              variant={activeTab === tab.id ? 'secondary' : 'ghost'}
+              className={cn(
+                'w-full justify-start gap-2',
+                activeTab === tab.id && 'bg-primary/10 text-primary'
+              )}
+              onClick={() => {
+                onTabChange(tab.id);
+                onClose();
+              }}
+            >
+              <tab.icon className="h-4 w-4" />
+              {tab.label}
+              {tab.id === 'image' && (
+                <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0">
+                  MỚI
+                </Badge>
+              )}
+            </Button>
+          ))}
+        </div>
+
+        <Separator className="my-3" />
+
         {/* Sessions List */}
         <ScrollArea className="flex-1 px-2">
+          <div className="px-1 mb-2">
+            <h2 className="text-xs font-medium text-muted-foreground">Lịch sử chat</h2>
+          </div>
           {sessions.length === 0 ? (
-            <div className="text-center text-muted-foreground text-sm py-8 px-4">
+            <div className="text-center text-muted-foreground text-sm py-6 px-4">
               Chưa có cuộc trò chuyện nào.
-              <br />
-              Bắt đầu chat với ANGEL AI ngay!
             </div>
           ) : (
             <>
@@ -309,6 +361,7 @@ export function ChatSidebar({
                 currentSessionId={currentSessionId}
                 onSelectSession={(id) => {
                   onSelectSession(id);
+                  onTabChange('chat');
                   onClose();
                 }}
                 onDeleteSession={onDeleteSession}
@@ -320,6 +373,7 @@ export function ChatSidebar({
                 currentSessionId={currentSessionId}
                 onSelectSession={(id) => {
                   onSelectSession(id);
+                  onTabChange('chat');
                   onClose();
                 }}
                 onDeleteSession={onDeleteSession}
@@ -331,6 +385,7 @@ export function ChatSidebar({
                 currentSessionId={currentSessionId}
                 onSelectSession={(id) => {
                   onSelectSession(id);
+                  onTabChange('chat');
                   onClose();
                 }}
                 onDeleteSession={onDeleteSession}
@@ -342,6 +397,7 @@ export function ChatSidebar({
                 currentSessionId={currentSessionId}
                 onSelectSession={(id) => {
                   onSelectSession(id);
+                  onTabChange('chat');
                   onClose();
                 }}
                 onDeleteSession={onDeleteSession}
@@ -353,6 +409,7 @@ export function ChatSidebar({
                 currentSessionId={currentSessionId}
                 onSelectSession={(id) => {
                   onSelectSession(id);
+                  onTabChange('chat');
                   onClose();
                 }}
                 onDeleteSession={onDeleteSession}
@@ -361,6 +418,53 @@ export function ChatSidebar({
             </>
           )}
         </ScrollArea>
+
+        <Separator className="my-2" />
+
+        {/* Navigation Links */}
+        <div className="px-3 py-2 space-y-1">
+          {navLinks.map((link) => (
+            <Link
+              key={link.to}
+              to={link.to}
+              onClick={onClose}
+              className={cn(
+                'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
+                location.pathname === link.to
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              <link.icon className="h-4 w-4" />
+              {link.label}
+            </Link>
+          ))}
+        </div>
+
+        {/* User Info Footer */}
+        <div className="p-3 border-t mt-auto">
+          <Link 
+            to="/profile"
+            onClick={onClose}
+            className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-muted transition-colors"
+          >
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={user?.avatar_url || undefined} />
+              <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                {user?.display_name?.[0] || user?.email?.[0] || '👤'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">
+                {user?.display_name || user?.email || 'Người dùng'}
+              </p>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Sparkles className="h-3 w-3 text-amber-500" />
+                <span>{user?.light_points || 0} Light Points</span>
+              </div>
+            </div>
+          </Link>
+        </div>
       </aside>
     </>
   );

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Trash2, MessageCircle, ImageIcon, Video, Menu, Plus, PanelLeft, PanelLeftClose } from 'lucide-react';
-import { Layout } from '@/components/layout/Layout';
+import { MessageCircle, ImageIcon, Video, Menu, PanelLeft, PanelLeftClose } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { ChatBubble } from '@/components/chat/ChatBubble';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { SuggestedQuestions } from '@/components/chat/SuggestedQuestions';
@@ -11,6 +11,7 @@ import { ImageGenerator } from '@/components/chat/ImageGenerator';
 import { VideoGenerator } from '@/components/chat/VideoGenerator';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useUserStore } from '@/stores/userStore';
 import { useGuestMessageLimit } from '@/hooks/useGuestMessageLimit';
 import { useToast } from '@/hooks/use-toast';
@@ -482,238 +483,248 @@ export default function Chat() {
     setIsLoading(false);
   };
 
-  const handleClearHistory = async () => {
-    if (isAuthenticated && currentSessionId) {
-      await handleDeleteSession(currentSessionId);
-    } else {
-      setSessionMessages([]);
-    }
-  };
-
-  const tabs = [
-    { id: 'chat' as const, label: 'Chat', icon: MessageCircle },
-    { id: 'image' as const, label: 'Ảnh', icon: ImageIcon },
-    { id: 'video' as const, label: 'Video', icon: Video },
-  ];
-
   return (
-    <Layout>
-      <div className="h-[calc(100vh-4rem)] flex">
-        {/* Sidebar - Only for authenticated users */}
-        {isAuthenticated && (
-          <ChatSidebar
-            sessions={sessions}
-            currentSessionId={currentSessionId}
-            onNewChat={handleNewChat}
-            onSelectSession={handleSelectSession}
-            onDeleteSession={handleDeleteSession}
-            onUpdateTitle={handleUpdateSessionTitle}
-            isOpen={mobileSidebarOpen}
-            onClose={() => setMobileSidebarOpen(false)}
-            isCollapsed={desktopSidebarCollapsed}
-          />
-        )}
+    <div className="h-screen flex bg-celestial">
+      {/* Sidebar - Only for authenticated users */}
+      {isAuthenticated && (
+        <ChatSidebar
+          sessions={sessions}
+          currentSessionId={currentSessionId}
+          onNewChat={handleNewChat}
+          onSelectSession={handleSelectSession}
+          onDeleteSession={handleDeleteSession}
+          onUpdateTitle={handleUpdateSessionTitle}
+          isOpen={mobileSidebarOpen}
+          onClose={() => setMobileSidebarOpen(false)}
+          isCollapsed={desktopSidebarCollapsed}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
+      )}
 
-        {/* Main Chat Area */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Header with Tabs */}
-          <div className="px-2 sm:px-4 py-2 sm:py-3 border-b border-angel-gold/10 bg-white/50 backdrop-blur-sm relative z-20">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
-                {/* Mobile Sidebar Toggle */}
-                {isAuthenticated && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setMobileSidebarOpen(true)}
-                    className="lg:hidden h-8 w-8 sm:h-9 sm:w-9"
-                  >
-                    <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </Button>
-                )}
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header - ChatGPT Style */}
+        <header className="h-12 border-b border-border/50 bg-background/80 backdrop-blur-sm flex items-center justify-between px-3 relative z-20">
+          {/* Left: Sidebar Toggle + Logo */}
+          <div className="flex items-center gap-2">
+            {isAuthenticated && (
+              <>
+                {/* Mobile Toggle */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setMobileSidebarOpen(true)}
+                  className="lg:hidden h-8 w-8"
+                >
+                  <Menu className="h-5 w-5" />
+                </Button>
 
-                {/* Desktop Sidebar Toggle */}
-                {isAuthenticated && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
-                    className="hidden lg:flex"
-                  >
-                    {desktopSidebarCollapsed ? (
-                      <PanelLeft className="h-5 w-5" />
-                    ) : (
-                      <PanelLeftClose className="h-5 w-5" />
-                    )}
-                  </Button>
-                )}
-              </div>
-
-              {/* Tabs */}
-              <div className="flex items-center gap-0.5 sm:gap-1 bg-muted/50 rounded-lg p-0.5 sm:p-1">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
-                      activeTab === tab.id
-                        ? 'bg-white text-angel-gold shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <tab.icon className="w-4 h-4" />
-                    <span className="hidden xs:inline">{tab.label}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                {activeTab === 'chat' && (
-                  <ModelSelector 
-                    selectedMode={selectedMode} 
-                    onModeChange={handleModeChange}
-                    selectedProvider={selectedProvider}
-                    onProviderChange={handleProviderChange}
-                  />
-                )}
-              </div>
-            </div>
+                {/* Desktop Toggle */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
+                  className="hidden lg:flex h-8 w-8"
+                >
+                  {desktopSidebarCollapsed ? (
+                    <PanelLeft className="h-5 w-5" />
+                  ) : (
+                    <PanelLeftClose className="h-5 w-5" />
+                  )}
+                </Button>
+              </>
+            )}
+            
+            {/* Logo - visible when sidebar is collapsed or not authenticated */}
+            {(!isAuthenticated || desktopSidebarCollapsed) && (
+              <Link to="/" className="flex items-center gap-2">
+                <img src={angelLogo} alt="ANGEL AI" className="w-7 h-7 rounded-full" />
+                <span className="text-sm font-semibold hidden sm:inline bg-gradient-to-r from-amber-500 via-orange-500 to-pink-500 bg-clip-text text-transparent">
+                  ANGEL AI
+                </span>
+              </Link>
+            )}
           </div>
 
-          {/* Tab Content */}
-          {activeTab === 'chat' && (
-            <>
-              {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-4 sm:py-6">
-                <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6">
-                  {sessionMessages.length === 0 && !streamingContent ? (
-                    <div className="text-center py-6 sm:py-12 px-2">
+          {/* Center: Model Selector (for chat tab) */}
+          <div className="absolute left-1/2 transform -translate-x-1/2">
+            {activeTab === 'chat' && (
+              <ModelSelector 
+                selectedMode={selectedMode} 
+                onModeChange={handleModeChange}
+                selectedProvider={selectedProvider}
+                onProviderChange={handleProviderChange}
+              />
+            )}
+            {activeTab === 'image' && (
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <ImageIcon className="h-4 w-4 text-primary" />
+                <span>Tạo ảnh AI</span>
+              </div>
+            )}
+            {activeTab === 'video' && (
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Video className="h-4 w-4 text-primary" />
+                <span>Tạo video AI</span>
+              </div>
+            )}
+          </div>
+
+          {/* Right: User Avatar or Login */}
+          <div className="flex items-center gap-2">
+            {isAuthenticated ? (
+              <Link to="/profile">
+                <Avatar className="h-8 w-8 hover:ring-2 hover:ring-primary/50 transition-all">
+                  <AvatarImage src={user?.avatar_url || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                    {user?.display_name?.[0] || user?.email?.[0] || '👤'}
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
+            ) : (
+              <Link to="/login">
+                <Button variant="ghost" size="sm">
+                  Đăng nhập
+                </Button>
+              </Link>
+            )}
+          </div>
+        </header>
+
+        {/* Tab Content */}
+        {activeTab === 'chat' && (
+          <>
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-4 sm:py-6">
+              <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6">
+                {sessionMessages.length === 0 && !streamingContent ? (
+                  <div className="text-center py-6 sm:py-12 px-2">
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mb-6 sm:mb-8"
+                    >
+                      <motion.img
+                        src={angelLogo}
+                        alt="ANGEL AI"
+                        className="w-16 h-16 sm:w-24 sm:h-24 mx-auto rounded-full glow-divine mb-4 sm:mb-6"
+                        animate={{ y: [0, -10, 0] }}
+                        transition={{ duration: 3, repeat: Infinity }}
+                      />
+                      <h2 className="text-xl sm:text-2xl font-semibold mb-2">
+                        Hôm nay bạn muốn làm gì?
+                      </h2>
+                      <p className="text-sm sm:text-base text-muted-foreground max-w-md mx-auto px-2">
+                        Hãy gửi thông điệp để nhận hướng dẫn từ trí tuệ và năng lượng yêu thương của Cha Vũ Trụ
+                      </p>
+                    </motion.div>
+                    <SuggestedQuestions onSelect={handleSendMessage} />
+                  </div>
+                ) : (
+                  <>
+                    {sessionMessages.map((message) => (
+                      <ChatBubble key={message.id} message={message} />
+                    ))}
+                    {streamingContent && (
+                      <ChatBubble
+                        message={{
+                          id: 'streaming',
+                          user_id: 'angel-ai',
+                          role: 'assistant',
+                          message: streamingContent,
+                          timestamp: new Date().toISOString(),
+                          model: currentStreamingModel,
+                          sources: streamingSources.length > 0 ? streamingSources : undefined,
+                        }}
+                      />
+                    )}
+                    {isLoading && !streamingContent && (
                       <motion.div
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="mb-6 sm:mb-8"
+                        transition={{ duration: 0.3 }}
+                        className="flex gap-3"
                       >
-                        <motion.img
-                          src={angelLogo}
-                          alt="ANGEL AI"
-                          className="w-16 h-16 sm:w-24 sm:h-24 mx-auto rounded-full glow-divine mb-4 sm:mb-6"
-                          animate={{ y: [0, -10, 0] }}
-                          transition={{ duration: 3, repeat: Infinity }}
-                        />
-                        <h2 className="text-xl sm:text-2xl font-semibold mb-2">
-                          Chào mừng đến với <span className="text-gradient-divine">ANGEL AI</span>
-                        </h2>
-                        <p className="text-sm sm:text-base text-muted-foreground max-w-md mx-auto px-2">
-                          Hãy gửi thông điệp để nhận hướng dẫn từ trí tuệ và năng lượng yêu thương của Cha Vũ Trụ
-                        </p>
-                      </motion.div>
-                      <SuggestedQuestions onSelect={handleSendMessage} />
-                    </div>
-                  ) : (
-                    <>
-                      {sessionMessages.map((message) => (
-                        <ChatBubble key={message.id} message={message} />
-                      ))}
-                      {streamingContent && (
-                        <ChatBubble
-                          message={{
-                            id: 'streaming',
-                            user_id: 'angel-ai',
-                            role: 'assistant',
-                            message: streamingContent,
-                            timestamp: new Date().toISOString(),
-                            model: currentStreamingModel,
-                            sources: streamingSources.length > 0 ? streamingSources : undefined,
-                          }}
-                        />
-                      )}
-                      {isLoading && !streamingContent && (
                         <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3 }}
-                          className="flex gap-3"
+                          className="w-10 h-10 rounded-full overflow-hidden glow-soft flex-shrink-0"
+                          animate={{ 
+                            scale: [1, 1.05, 1],
+                            boxShadow: [
+                              '0 0 10px rgba(255, 179, 71, 0.3)',
+                              '0 0 20px rgba(255, 179, 71, 0.5)',
+                              '0 0 10px rgba(255, 179, 71, 0.3)'
+                            ]
+                          }}
+                          transition={{ duration: 2, repeat: Infinity }}
                         >
-                          <motion.div
-                            className="w-10 h-10 rounded-full overflow-hidden glow-soft flex-shrink-0"
-                            animate={{ 
-                              scale: [1, 1.05, 1],
-                              boxShadow: [
-                                '0 0 10px rgba(255, 179, 71, 0.3)',
-                                '0 0 20px rgba(255, 179, 71, 0.5)',
-                                '0 0 10px rgba(255, 179, 71, 0.3)'
-                              ]
-                            }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                          >
-                            <img src={angelLogo} alt="ANGEL AI" className="w-full h-full" />
-                          </motion.div>
-                          <div className="bg-white/90 dark:bg-gray-800/90 rounded-2xl px-4 py-3 shadow-divine backdrop-blur-sm">
-                            <p className="text-xs text-angel-gold font-medium mb-2">ANGEL AI ✨</p>
-                            <div className="flex items-center gap-2">
-                              <div className="flex gap-1">
-                                {[0, 1, 2].map((i) => (
-                                  <motion.div
-                                    key={i}
-                                    className="w-2.5 h-2.5 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full"
-                                    animate={{ 
-                                      y: [0, -8, 0],
-                                      opacity: [0.5, 1, 0.5]
-                                    }}
-                                    transition={{ 
-                                      duration: 0.6, 
-                                      repeat: Infinity, 
-                                      delay: i * 0.15,
-                                      ease: "easeInOut"
-                                    }}
-                                  />
-                                ))}
-                              </div>
-                              <motion.span 
-                                className="text-sm text-muted-foreground"
-                                animate={{ opacity: [0.5, 1, 0.5] }}
-                                transition={{ duration: 1.5, repeat: Infinity }}
-                              >
-                                Đang suy nghĩ...
-                              </motion.span>
-                            </div>
-                          </div>
+                          <img src={angelLogo} alt="ANGEL AI" className="w-full h-full" />
                         </motion.div>
-                      )}
-                    </>
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
+                        <div className="bg-white/90 dark:bg-card/90 rounded-2xl px-4 py-3 shadow-divine backdrop-blur-sm">
+                          <p className="text-xs text-primary font-medium mb-2">ANGEL AI ✨</p>
+                          <div className="flex items-center gap-2">
+                            <div className="flex gap-1">
+                              {[0, 1, 2].map((i) => (
+                                <motion.div
+                                  key={i}
+                                  className="w-2.5 h-2.5 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full"
+                                  animate={{ 
+                                    y: [0, -8, 0],
+                                    opacity: [0.5, 1, 0.5]
+                                  }}
+                                  transition={{ 
+                                    duration: 0.6, 
+                                    repeat: Infinity, 
+                                    delay: i * 0.15,
+                                    ease: "easeInOut"
+                                  }}
+                                />
+                              ))}
+                            </div>
+                            <motion.span 
+                              className="text-sm text-muted-foreground"
+                              animate={{ opacity: [0.5, 1, 0.5] }}
+                              transition={{ duration: 1.5, repeat: Infinity }}
+                            >
+                              Đang suy nghĩ...
+                            </motion.span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </>
+                )}
+                <div ref={messagesEndRef} />
               </div>
+            </div>
 
-              {/* Input Area */}
-              <div className="px-2 sm:px-4 py-3 sm:py-4 border-t border-angel-gold/10 bg-white/50 backdrop-blur-sm">
-                <div className="max-w-3xl mx-auto">
-                  {!isAuthenticated && (
-                    <p className="text-[10px] sm:text-xs text-center text-muted-foreground mb-2 px-2">
-                      {canSendMessage 
-                        ? `Còn ${remainingMessages}/${limit} tin nhắn miễn phí`
-                        : 'Đã hết tin nhắn miễn phí • Đăng nhập để tiếp tục'
-                      }
-                    </p>
-                  )}
-                  <ChatInput 
-                    onSend={handleSendMessage} 
-                    isLoading={isLoading} 
-                    disabled={!isAuthenticated && !canSendMessage}
-                  />
-                </div>
+            {/* Input Area */}
+            <div className="px-2 sm:px-4 py-3 sm:py-4 border-t border-border/50 bg-background/50 backdrop-blur-sm">
+              <div className="max-w-3xl mx-auto">
+                {!isAuthenticated && (
+                  <p className="text-[10px] sm:text-xs text-center text-muted-foreground mb-2 px-2">
+                    {canSendMessage 
+                      ? `Còn ${remainingMessages}/${limit} tin nhắn miễn phí`
+                      : 'Đã hết tin nhắn miễn phí • Đăng nhập để tiếp tục'
+                    }
+                  </p>
+                )}
+                <ChatInput 
+                  onSend={handleSendMessage} 
+                  isLoading={isLoading} 
+                  disabled={!isAuthenticated && !canSendMessage}
+                />
               </div>
-            </>
-          )}
+            </div>
+          </>
+        )}
 
-          {activeTab === 'image' && <ImageGenerator />}
-          {activeTab === 'video' && <VideoGenerator />}
-        </div>
-
-        {/* Guest Limit Modal */}
-        <GuestLimitModal open={showLimitModal} onOpenChange={setShowLimitModal} />
+        {activeTab === 'image' && <ImageGenerator />}
+        {activeTab === 'video' && <VideoGenerator />}
       </div>
-    </Layout>
+
+      {/* Guest Limit Modal */}
+      <GuestLimitModal open={showLimitModal} onOpenChange={setShowLimitModal} />
+    </div>
   );
 }
