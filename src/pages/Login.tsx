@@ -94,7 +94,7 @@ export default function Login() {
             title: 'Tạo tài khoản thành công! ✨',
             description: 'Chào mừng bạn đến với ANGEL AI',
           });
-          navigate('/chat');
+          navigate('/onboarding');
         }
       }
     } catch (error) {

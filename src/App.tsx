@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import Wallet from "./pages/Wallet";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Onboarding from "./pages/Onboarding";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import KnowledgeUpload from "./pages/admin/KnowledgeUpload";
 import UserManagement from "./pages/admin/UserManagement";
@@ -46,6 +47,7 @@ function AppContent() {
       <Route path="/knowledge" element={<Knowledge />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/onboarding" element={<Onboarding />} />
       <Route path="/wallet" element={<Wallet />} />
       <Route path="/settings" element={<Settings />} />
       {/* Admin Routes */}
