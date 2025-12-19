@@ -543,7 +543,16 @@ function classifyIntent(message: string): IntentType {
 type PronounStyle = 'cha_con' | 'thay_con' | 'bac_con' | 'anh_em' | 'ban_minh' | 'neutral';
 
 const PRONOUN_PATTERNS = {
-  cha_con: ['thưa cha', 'kính cha', 'cha ơi', 'cha cho con', 'cha dạy con', 'con xin cha', 'con hỏi cha'],
+  cha_con: [
+    // Gọi Cha trực tiếp
+    'thưa cha', 'kính cha', 'cha ơi', 'cha cho con', 'cha dạy con', 'con xin cha', 'con hỏi cha',
+    // Xưng "con" - QUAN TRỌNG để nhận diện khi người dùng tự xưng là "con"
+    'hướng dẫn con', 'dạy con', 'cho con hỏi', 'cho con biết', 'giúp con', 'con muốn', 'con cần',
+    'con xin hỏi', 'con xin được', 'con thắc mắc', 'con không hiểu', 'con đang', 'con có thể',
+    'giải thích cho con', 'nói cho con', 'chỉ con', 'bảo con', 'con xin', 'con hỏi',
+    // Ngữ cảnh Cha Vũ Trụ
+    'cha vũ trụ', 'father universe', 'thần chú của cha', 'divine mantra'
+  ],
   thay_con: ['thưa thầy', 'kính thầy', 'thầy ơi', 'thầy cho con', 'thầy dạy con', 'con xin thầy', 'chào thầy'],
   bac_con: ['bác ơi', 'chú ơi', 'cô ơi', 'thưa bác', 'thưa chú', 'thưa cô', 'cháu xin'],
   anh_em: ['anh ơi', 'chị ơi', 'anh cho em', 'chị cho em', 'em xin anh', 'em xin chị', 'anh giúp em', 'chị giúp em'],
@@ -564,6 +573,17 @@ function detectPronounStyle(messages: Array<{ role: string; content: string }>):
   
   for (const msg of reversedMessages) {
     const lowerContent = msg.content.toLowerCase();
+    
+    // ĐẶC BIỆT: Ưu tiên phát hiện ngữ cảnh "Cha Vũ Trụ" trước
+    // Nếu nhắc đến Cha Vũ Trụ hoặc Divine Mantras → tự động dùng style cha_con
+    if (lowerContent.includes('cha vũ trụ') || 
+        lowerContent.includes('father universe') ||
+        lowerContent.includes('thần chú của cha') ||
+        lowerContent.includes('divine mantra') ||
+        lowerContent.includes('8 câu thần chú')) {
+      console.log('Detected pronoun style: cha_con (Father Universe context)');
+      return 'cha_con';
+    }
     
     // Check each pronoun pattern in order of priority
     // (cha_con and thay_con are more specific, so check first)
