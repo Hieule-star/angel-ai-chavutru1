@@ -66,6 +66,9 @@ export default function Chat() {
   const [suggestedMantra, setSuggestedMantra] = useState<DivineMantra | null>(null);
   const [messageCountForMantra, setMessageCountForMantra] = useState(0);
   
+  // Session pronoun style (ghi nhớ cách xưng hô để không detect lại mỗi tin nhắn)
+  const [sessionPronounStyle, setSessionPronounStyle] = useState<string | null>(null);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { 
     updateLightPoints,
@@ -187,6 +190,7 @@ export default function Chat() {
     setShowDailyAffirmation(true);
     setSuggestedMantra(null);
     setMessageCountForMantra(0);
+    setSessionPronounStyle(null); // Reset pronoun style cho session mới
     if (!isAuthenticated) {
       setSessionMessages([]);
       setCurrentSessionId(null);
@@ -218,6 +222,7 @@ export default function Chat() {
 
   const handleSelectSession = async (sessionId: string) => {
     setCurrentSessionId(sessionId);
+    setSessionPronounStyle(null); // Reset để detect lại từ lịch sử session
     await loadSessionMessages(sessionId);
   };
 
@@ -388,7 +393,7 @@ export default function Chat() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages: apiMessages, mode: selectedMode, provider: selectedProvider }),
+        body: JSON.stringify({ messages: apiMessages, mode: selectedMode, provider: selectedProvider, sessionPronounStyle }),
         signal: controller.signal,
       });
 
@@ -411,6 +416,7 @@ export default function Chat() {
       let capturedSources: KnowledgeSource[] = [];
       let actualModel: AIModel | undefined;
       let capturedProvider: AIProvider | undefined;
+      let capturedPronounStyle: string | undefined;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -446,6 +452,12 @@ export default function Chat() {
             // Chỉ lấy provider từ metadata packet (có actualModel)
             if (parsed.actualModel && parsed.provider) {
               capturedProvider = parsed.provider as AIProvider;
+            }
+            
+            // Capture pronoun style để ghi nhớ trong session
+            if (parsed.pronounStyle) {
+              capturedPronounStyle = parsed.pronounStyle;
+              setSessionPronounStyle(capturedPronounStyle);
             }
             
             // Chỉ skip nếu đây là metadata packet (có sources HOẶC actualModel, và KHÔNG có choices)

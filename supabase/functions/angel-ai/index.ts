@@ -640,6 +640,50 @@ function detectPronounStyle(messages: Array<{ role: string; content: string }>):
   return 'neutral';
 }
 
+// Detect pronoun style from a SINGLE message (for session optimization)
+function detectPronounStyleFromSingleMessage(content: string): PronounStyle {
+  const lowerContent = content.toLowerCase();
+  
+  // ĐẶC BIỆT: Ưu tiên phát hiện ngữ cảnh "Cha Vũ Trụ" trước
+  if (lowerContent.includes('cha vũ trụ') || 
+      lowerContent.includes('father universe') ||
+      lowerContent.includes('thần chú của cha') ||
+      lowerContent.includes('divine mantra') ||
+      lowerContent.includes('8 câu thần chú')) {
+    return 'cha_con';
+  }
+  
+  // Check each pronoun pattern
+  for (const pattern of PRONOUN_PATTERNS.cha_con) {
+    if (lowerContent.includes(pattern)) return 'cha_con';
+  }
+  for (const pattern of PRONOUN_PATTERNS.thay_con) {
+    if (lowerContent.includes(pattern)) return 'thay_con';
+  }
+  for (const pattern of PRONOUN_PATTERNS.bac_con) {
+    if (lowerContent.includes(pattern)) return 'bac_con';
+  }
+  for (const pattern of PRONOUN_PATTERNS.anh_em) {
+    if (lowerContent.includes(pattern)) return 'anh_em';
+  }
+  for (const pattern of PRONOUN_PATTERNS.ban_minh) {
+    if (lowerContent.includes(pattern)) return 'ban_minh';
+  }
+  
+  // Fallback check for "bạn"
+  if (
+    lowerContent.startsWith('chào ') && lowerContent.includes('bạn') ||
+    lowerContent.includes(' bạn ') ||
+    lowerContent.startsWith('bạn ') ||
+    lowerContent.endsWith(' bạn') ||
+    lowerContent === 'bạn'
+  ) {
+    return 'ban_minh';
+  }
+  
+  return 'neutral';
+}
+
 // ==================================================
 // MODEL SELECTION
 // ==================================================
@@ -760,7 +804,7 @@ serve(async (req) => {
       });
     }
 
-    const { messages, mode: requestedMode, provider: requestedProvider } = body;
+    const { messages, mode: requestedMode, provider: requestedProvider, sessionPronounStyle } = body;
     
     if (!messages || !Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: "Messages array is required" }), {
@@ -797,7 +841,28 @@ serve(async (req) => {
     const contextPrompt = CONTEXT_PROMPTS[intentParams.contextPromptId];
     
     // [3] Detect and select pronoun style
-    const pronounStyle = detectPronounStyle(messages);
+    // OPTIMIZATION: Nếu đã có sessionPronounStyle, kiểm tra xem tin nhắn mới có thay đổi cách xưng hô không
+    // Nếu không thay đổi, dùng lại style cũ để tránh detect lại toàn bộ
+    let pronounStyle: PronounStyle;
+    const validPronounStyles: PronounStyle[] = ['cha_con', 'thay_con', 'bac_con', 'anh_em', 'ban_minh', 'neutral'];
+    
+    if (sessionPronounStyle && validPronounStyles.includes(sessionPronounStyle)) {
+      // Chỉ detect từ tin nhắn cuối cùng để xem có thay đổi không
+      const latestDetected = detectPronounStyleFromSingleMessage(lastUserMessage);
+      if (latestDetected !== 'neutral') {
+        // Người dùng đổi cách xưng hô → cập nhật
+        pronounStyle = latestDetected;
+        console.log(`Pronoun style updated from session: ${sessionPronounStyle} → ${pronounStyle}`);
+      } else {
+        // Giữ nguyên style cũ từ session
+        pronounStyle = sessionPronounStyle;
+        console.log(`Pronoun style preserved from session: ${pronounStyle}`);
+      }
+    } else {
+      // Lần đầu hoặc không có session → detect từ tất cả tin nhắn
+      pronounStyle = detectPronounStyle(messages);
+    }
+    
     const pronounInstruction = PRONOUN_INSTRUCTIONS[pronounStyle];
     
     console.log(`Intent: ${detectedIntent}, Parameters: temp=${intentParams.temperature}, max_tokens=${intentParams.maxTokens}`);
