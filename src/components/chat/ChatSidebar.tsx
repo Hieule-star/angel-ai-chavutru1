@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   Plus, MessageSquare, Trash2, Edit2, Check, X, ChevronLeft,
   Home, User, Wallet, Code, ImageIcon, Video, MessageCircle,
-  Sparkles, Search
+  Sparkles, Search, ChevronUp, LogOut
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,8 @@ import { motion } from 'framer-motion';
 import angelLogo from '@/assets/angel-logo.png';
 import { useUserStore } from '@/stores/userStore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { supabase } from '@/integrations/supabase/client';
 
 type TabType = 'chat' | 'image' | 'video';
 
@@ -457,51 +459,66 @@ export function ChatSidebar({
           )}
         </ScrollArea>
 
-        <Separator className="my-2" />
-
-        {/* Navigation Links */}
-        <div className="px-3 py-2 space-y-1">
-          {navLinks.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              onClick={onClose}
-              className={cn(
-                'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
-                location.pathname === link.to
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}
-            >
-              <link.icon className="h-4 w-4" />
-              {link.label}
-            </Link>
-          ))}
-        </div>
-
-        {/* User Info Footer */}
+        {/* User Info Footer with Popup Menu */}
         <div className="p-3 border-t mt-auto">
-          <Link 
-            to="/profile"
-            onClick={onClose}
-            className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-muted transition-colors"
-          >
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={user?.avatar_url || undefined} />
-              <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                {user?.display_name?.[0] || user?.email?.[0] || '👤'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">
-                {user?.display_name || user?.email || 'Người dùng'}
-              </p>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Sparkles className="h-3 w-3 text-amber-500" />
-                <span>{user?.light_points || 0} Light Points</span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-muted transition-colors text-left">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user?.avatar_url || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                    {user?.display_name?.[0] || user?.email?.[0] || '👤'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {user?.display_name || user?.email || 'Người dùng'}
+                  </p>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Sparkles className="h-3 w-3 text-amber-500" />
+                    <span>{user?.light_points || 0} Light Points</span>
+                  </div>
+                </div>
+                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent 
+              side="top" 
+              align="start" 
+              className="w-56 p-2"
+            >
+              <div className="space-y-1">
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    onClick={onClose}
+                    className={cn(
+                      'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
+                      location.pathname === link.to
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                  >
+                    <link.icon className="h-4 w-4" />
+                    {link.label}
+                  </Link>
+                ))}
+                <Separator className="my-1" />
+                <button
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    onClose();
+                    window.location.href = '/';
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Đăng xuất
+                </button>
               </div>
-            </div>
-          </Link>
+            </PopoverContent>
+          </Popover>
         </div>
       </aside>
     </>
