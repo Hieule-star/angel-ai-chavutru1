@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   Plus, MessageSquare, Trash2, Edit2, Check, X, ChevronLeft,
   Home, User, Wallet, Code, ImageIcon, Video, MessageCircle,
-  Sparkles
+  Sparkles, Search
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -248,9 +248,18 @@ export function ChatSidebar({
   activeTab,
   onTabChange,
 }: ChatSidebarProps) {
-  const groupedSessions = groupSessionsByDate(sessions);
+  const [searchQuery, setSearchQuery] = useState('');
   const { user } = useUserStore();
   const location = useLocation();
+
+  // Filter sessions based on search query
+  const filteredSessions = searchQuery.trim()
+    ? sessions.filter(session => 
+        session.title.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : sessions;
+
+  const groupedSessions = groupSessionsByDate(filteredSessions);
 
   return (
     <>
@@ -344,14 +353,43 @@ export function ChatSidebar({
 
         <Separator className="my-3" />
 
+        {/* Search Input */}
+        <div className="px-3 pb-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Tìm kiếm đoạn chat..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-9 text-sm bg-muted/50 border-0 focus-visible:ring-1"
+            />
+            {searchQuery && (
+              <Button
+                size="icon"
+                variant="ghost"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                onClick={() => setSearchQuery('')}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        </div>
+
         {/* Sessions List */}
         <ScrollArea className="flex-1 px-2">
           <div className="px-1 mb-2">
-            <h2 className="text-xs font-medium text-muted-foreground">Lịch sử chat</h2>
+            <h2 className="text-xs font-medium text-muted-foreground">
+              {searchQuery ? `Kết quả tìm kiếm (${filteredSessions.length})` : 'Lịch sử chat'}
+            </h2>
           </div>
           {sessions.length === 0 ? (
             <div className="text-center text-muted-foreground text-sm py-6 px-4">
               Chưa có cuộc trò chuyện nào.
+            </div>
+          ) : filteredSessions.length === 0 ? (
+            <div className="text-center text-muted-foreground text-sm py-6 px-4">
+              Không tìm thấy kết quả cho "{searchQuery}"
             </div>
           ) : (
             <>
