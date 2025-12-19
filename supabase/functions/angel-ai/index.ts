@@ -732,7 +732,7 @@ async function callOpenAI(
       messages,
       stream: true,
       temperature,
-      max_tokens: maxTokens,
+      max_completion_tokens: maxTokens,
     }),
   });
 }
@@ -1094,7 +1094,7 @@ ${uniqueTopics
           messages: allMessages,
           stream: true,
           temperature: intentParams.temperature,
-          max_tokens: intentParams.maxTokens,
+          max_completion_tokens: intentParams.maxTokens,
         }),
       });
       
@@ -1138,7 +1138,7 @@ ${uniqueTopics
           messages: allMessages,
           stream: true,
           temperature: intentParams.temperature,
-          max_tokens: intentParams.maxTokens,
+          max_completion_tokens: intentParams.maxTokens,
         }),
       });
 
