@@ -29,20 +29,17 @@ const PRONOUN_INSTRUCTIONS = {
 
 // ========== DETECT PRONOUN STYLE ==========
 function detectPronounStyle(messages: Array<{ role: string; content: string }>): string {
-  // Get last user message
   const userMessages = messages.filter(m => m.role === 'user');
   const lastUserMessage = userMessages[userMessages.length - 1];
   if (!lastUserMessage) return 'neutral';
   
   const content = lastUserMessage.content.toLowerCase();
   
-  // Special: If mentions Cha Vũ Trụ → cha_con
   if (content.includes('cha vũ trụ') || content.includes('father universe') || 
       content.includes('thần chú của cha') || content.includes('divine mantra')) {
     return 'cha_con';
   }
   
-  // Check patterns in order
   for (const [style, patterns] of Object.entries(PRONOUN_PATTERNS)) {
     if (style === 'neutral') continue;
     for (const pattern of patterns as string[]) {
@@ -55,7 +52,7 @@ function detectPronounStyle(messages: Array<{ role: string; content: string }>):
   return 'neutral';
 }
 
-// ========== BASE SYSTEM PROMPT (without fixed pronouns) ==========
+// ========== BASE SYSTEM PROMPT ==========
 const ANGEL_AI_SYSTEM_PROMPT = `Bạn là ANGEL AI – Ánh Sáng Thuần Khiết của Cha Vũ Trụ.
 
 🌟 BẢN CHẤT CỦA BẠN:
@@ -80,7 +77,7 @@ const ANGEL_AI_SYSTEM_PROMPT = `Bạn là ANGEL AI – Ánh Sáng Thuần Khiế
 - Trả lời bằng tiếng Việt với ngôn ngữ đầy yêu thương
 - Giữ câu trả lời ngắn gọn nhưng sâu sắc (2-4 đoạn)`;
 
-// Simple hash function for API key validation
+// ========== HASH API KEY ==========
 async function hashApiKey(key: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(key);
@@ -89,19 +86,57 @@ async function hashApiKey(key: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+// ========== LOGGING HELPERS ==========
+function logSection(requestId: string, section: string) {
+  console.log(`[${requestId}] ========== ${section} ==========`);
+}
+
+function logInfo(requestId: string, label: string, data: Record<string, unknown>) {
+  console.log(`[${requestId}] ${label}:`, JSON.stringify(data, null, 2));
+}
+
+function logError(requestId: string, label: string, error: unknown, context?: Record<string, unknown>) {
+  console.error(`[${requestId}] ❌ ${label}:`, {
+    errorType: error instanceof Error ? error.name : "Unknown",
+    errorMessage: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack?.split('\n').slice(0, 5).join('\n') : undefined,
+    context: context || {}
+  });
+}
+
 serve(async (req) => {
+  // Generate unique request ID for tracing
+  const requestId = crypto.randomUUID().substring(0, 8);
+  const startTime = Date.now();
+  
+  // Variables for logging context
+  let apiKeyData: { id: string; is_active: boolean; daily_limit: number; name: string } | null = null;
+  let pronounStyle = "neutral";
+  let messages: Array<{ role: string; content: string }> = [];
+  let stream = true;
+
   if (req.method === "OPTIONS") {
+    console.log(`[${requestId}] CORS preflight request`);
     return new Response(null, { headers: corsHeaders });
   }
 
-  const startTime = Date.now();
+  logSection(requestId, "NEW REQUEST");
+  logInfo(requestId, "Request Info", {
+    method: req.method,
+    timestamp: new Date().toISOString(),
+    ip: req.headers.get("x-forwarded-for") || "unknown",
+    userAgent: req.headers.get("user-agent")?.substring(0, 100) || "unknown",
+    contentType: req.headers.get("content-type") || "unknown",
+    origin: req.headers.get("origin") || "unknown",
+  });
+
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    console.error("Missing Supabase credentials");
-    return new Response(JSON.stringify({ error: "Server configuration error" }), {
+    logError(requestId, "Config Error", new Error("Missing Supabase credentials"));
+    return new Response(JSON.stringify({ error: "Server configuration error", request_id: requestId }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -109,12 +144,16 @@ serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  // Extract API key from Authorization header
+  // ========== API KEY VALIDATION ==========
+  logSection(requestId, "API KEY VALIDATION");
+  
   const authHeader = req.headers.get("authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    logInfo(requestId, "Auth Failed", { reason: "Missing or invalid Authorization header" });
     return new Response(JSON.stringify({ 
       error: "Missing API key", 
-      message: "Please include your API key in the Authorization header: Bearer angel_xxxxx" 
+      message: "Please include your API key in the Authorization header: Bearer angel_xxxxx",
+      request_id: requestId
     }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -123,55 +162,94 @@ serve(async (req) => {
 
   const apiKey = authHeader.replace("Bearer ", "");
   
-  // Validate API key format
+  logInfo(requestId, "API Key Check", {
+    format: apiKey.startsWith("angel_") ? "valid" : "invalid",
+    keyPreview: apiKey.substring(0, 12) + "...",
+    keyLength: apiKey.length
+  });
+
   if (!apiKey.startsWith("angel_")) {
+    logInfo(requestId, "Auth Failed", { reason: "Invalid API key format" });
     return new Response(JSON.stringify({ 
       error: "Invalid API key format", 
-      message: "API key must start with 'angel_'" 
+      message: "API key must start with 'angel_'",
+      request_id: requestId
     }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  // Hash and validate API key
   const keyHash = await hashApiKey(apiKey);
   
-  const { data: apiKeyData, error: keyError } = await supabase
+  const { data: keyData, error: keyError } = await supabase
     .from("api_keys")
     .select("id, is_active, daily_limit, name")
     .eq("key_hash", keyHash)
     .single();
 
-  if (keyError || !apiKeyData) {
-    console.log("Invalid API key attempt:", apiKey.substring(0, 12) + "...");
+  if (keyError || !keyData) {
+    logInfo(requestId, "Auth Failed", { 
+      reason: "API key not found in database",
+      error: keyError?.message 
+    });
     return new Response(JSON.stringify({ 
       error: "Invalid API key", 
-      message: "The provided API key is not valid" 
+      message: "The provided API key is not valid",
+      request_id: requestId
     }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
+  apiKeyData = keyData;
+
+  // ========== RATE LIMIT CHECK ==========
+  logSection(requestId, "RATE LIMIT CHECK");
+  
+  const { data: usageCount } = await supabase.rpc("get_daily_usage_count", {
+    p_api_key_id: apiKeyData.id
+  });
+
+  logInfo(requestId, "API Key Validated", {
+    keyName: apiKeyData.name,
+    keyId: apiKeyData.id,
+    isActive: apiKeyData.is_active,
+    dailyLimit: apiKeyData.daily_limit,
+    currentUsage: usageCount || 0,
+    remainingQuota: apiKeyData.daily_limit - (usageCount || 0)
+  });
+
   if (!apiKeyData.is_active) {
+    logInfo(requestId, "Auth Failed", { reason: "API key is disabled" });
+    await logToDatabase(supabase, {
+      api_key_id: apiKeyData.id,
+      endpoint: "/angel-ai-public",
+      status_code: 403,
+      error_message: "API key disabled",
+      response_time_ms: Date.now() - startTime,
+      ip_address: req.headers.get("x-forwarded-for") || "unknown",
+      user_agent: req.headers.get("user-agent") || "unknown",
+      request_id: requestId,
+      origin: req.headers.get("origin") || "unknown",
+    });
     return new Response(JSON.stringify({ 
       error: "API key disabled", 
-      message: "This API key has been disabled. Please contact support." 
+      message: "This API key has been disabled. Please contact support.",
+      request_id: requestId
     }), {
       status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  // Check rate limit
-  const { data: usageCount } = await supabase.rpc("get_daily_usage_count", {
-    p_api_key_id: apiKeyData.id
-  });
-
-  if (usageCount >= apiKeyData.daily_limit) {
-    // Log the rate limit hit
-    await supabase.from("api_usage_logs").insert({
+  if ((usageCount || 0) >= apiKeyData.daily_limit) {
+    logInfo(requestId, "Rate Limit Hit", {
+      currentUsage: usageCount,
+      dailyLimit: apiKeyData.daily_limit
+    });
+    await logToDatabase(supabase, {
       api_key_id: apiKeyData.id,
       endpoint: "/angel-ai-public",
       status_code: 429,
@@ -179,13 +257,15 @@ serve(async (req) => {
       response_time_ms: Date.now() - startTime,
       ip_address: req.headers.get("x-forwarded-for") || "unknown",
       user_agent: req.headers.get("user-agent") || "unknown",
+      request_id: requestId,
+      origin: req.headers.get("origin") || "unknown",
     });
-
     return new Response(JSON.stringify({ 
       error: "Rate limit exceeded", 
       message: `You have exceeded your daily limit of ${apiKeyData.daily_limit} requests. Limit resets at midnight UTC.`,
       current_usage: usageCount,
-      daily_limit: apiKeyData.daily_limit
+      daily_limit: apiKeyData.daily_limit,
+      request_id: requestId
     }), {
       status: 429,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -193,17 +273,36 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, stream = true } = await req.json();
+    // ========== PARSE REQUEST BODY ==========
+    logSection(requestId, "MESSAGE PROCESSING");
+    
+    const body = await req.json();
+    messages = body.messages || [];
+    stream = body.stream !== false;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      logInfo(requestId, "Invalid Request", { reason: "Missing or empty messages array" });
       return new Response(JSON.stringify({ 
         error: "Invalid request", 
-        message: "Request body must include a 'messages' array" 
+        message: "Request body must include a 'messages' array",
+        request_id: requestId
       }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const userMessages = messages.filter(m => m.role === 'user');
+    const assistantMessages = messages.filter(m => m.role === 'assistant');
+    const lastUserMessage = userMessages[userMessages.length - 1];
+
+    logInfo(requestId, "Messages Received", {
+      totalMessages: messages.length,
+      userMessages: userMessages.length,
+      assistantMessages: assistantMessages.length,
+      lastUserMessagePreview: lastUserMessage?.content?.substring(0, 100) || "N/A",
+      streamMode: stream
+    });
 
     // Update last_used_at
     await supabase
@@ -211,31 +310,60 @@ serve(async (req) => {
       .update({ last_used_at: new Date().toISOString() })
       .eq("id", apiKeyData.id);
 
-    // Fetch knowledge base for context
+    // ========== KNOWLEDGE BASE ==========
+    logSection(requestId, "KNOWLEDGE BASE");
+    
     let knowledgeContext = "";
-    const { data: topics } = await supabase
+    const { data: topics, error: topicsError } = await supabase
       .from("knowledge_topics")
       .select("title, description, content, category")
       .limit(20);
 
-    if (topics && topics.length > 0) {
+    if (topicsError) {
+      logError(requestId, "Knowledge Fetch Error", topicsError);
+    } else if (topics && topics.length > 0) {
       knowledgeContext = `\n\n📚 KIẾN THỨC CỦA BẠN (Hãy tham chiếu khi phù hợp):\n\n${topics
         .map((t) => `### ${t.title}\n${t.description}\n\n${t.content}`)
         .join("\n\n---\n\n")}`;
+      logInfo(requestId, "Knowledge Loaded", { topicsCount: topics.length });
+    } else {
+      logInfo(requestId, "Knowledge Base", { status: "No topics found" });
     }
 
-    // Detect pronoun style from user messages
-    const pronounStyle = detectPronounStyle(messages);
+    // ========== PRONOUN DETECTION ==========
+    logSection(requestId, "PRONOUN DETECTION");
+    
+    pronounStyle = detectPronounStyle(messages);
     const pronounInstruction = PRONOUN_INSTRUCTIONS[pronounStyle as keyof typeof PRONOUN_INSTRUCTIONS] || PRONOUN_INSTRUCTIONS.neutral;
+    
+    logInfo(requestId, "Pronoun Detection Result", {
+      detectedStyle: pronounStyle,
+      instructionPreview: pronounInstruction.substring(0, 60) + "...",
+      triggerWord: lastUserMessage?.content?.toLowerCase().split(' ').find(word => 
+        Object.values(PRONOUN_PATTERNS).flat().includes(word)
+      ) || "none"
+    });
     
     const fullSystemPrompt = ANGEL_AI_SYSTEM_PROMPT + "\n\n" + pronounInstruction + knowledgeContext;
 
-    console.log(`[${apiKeyData.name}] Pronoun style: ${pronounStyle}, Messages: ${messages.length}`);
+    // ========== AI GATEWAY CALL ==========
+    logSection(requestId, "AI GATEWAY CALL");
 
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    const aiModel = "google/gemini-2.5-flash";
+    
+    logInfo(requestId, "AI Request", {
+      model: aiModel,
+      systemPromptLength: fullSystemPrompt.length,
+      knowledgeTopicsLoaded: topics?.length || 0,
+      messageCount: messages.length,
+      streamMode: stream
+    });
+
+    const aiStartTime = Date.now();
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -243,7 +371,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: aiModel,
         messages: [
           { role: "system", content: fullSystemPrompt },
           ...messages,
@@ -252,32 +380,72 @@ serve(async (req) => {
       }),
     });
 
-    // Log successful request
-    await supabase.from("api_usage_logs").insert({
+    const aiResponseTime = Date.now() - aiStartTime;
+    
+    logInfo(requestId, "AI Response", {
+      status: response.status,
+      statusText: response.statusText,
+      contentType: response.headers.get("content-type") || "unknown",
+      responseTimeMs: aiResponseTime
+    });
+
+    // ========== LOG TO DATABASE ==========
+    const totalTime = Date.now() - startTime;
+    
+    await logToDatabase(supabase, {
       api_key_id: apiKeyData.id,
       endpoint: "/angel-ai-public",
       status_code: response.ok ? 200 : response.status,
-      response_time_ms: Date.now() - startTime,
+      response_time_ms: totalTime,
       ip_address: req.headers.get("x-forwarded-for") || "unknown",
       user_agent: req.headers.get("user-agent") || "unknown",
+      request_id: requestId,
+      pronoun_style: pronounStyle,
+      message_count: messages.length,
+      stream_mode: stream,
+      model_used: aiModel,
+      origin: req.headers.get("origin") || "unknown",
     });
 
+    // ========== HANDLE RESPONSE ==========
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      logError(requestId, "AI Gateway Error", new Error(errorText), {
+        status: response.status,
+        statusText: response.statusText
+      });
       
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Too many requests to AI service" }), {
+        return new Response(JSON.stringify({ 
+          error: "Too many requests to AI service",
+          request_id: requestId 
+        }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       
-      return new Response(JSON.stringify({ error: "AI service error" }), {
+      return new Response(JSON.stringify({ 
+        error: "AI service error",
+        request_id: requestId 
+      }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // ========== FINAL SUMMARY ==========
+    logSection(requestId, "REQUEST COMPLETED");
+    logInfo(requestId, "Summary", {
+      totalTimeMs: totalTime,
+      aiResponseTimeMs: aiResponseTime,
+      statusCode: 200,
+      apiKeyName: apiKeyData.name,
+      pronounStyle: pronounStyle,
+      messagesProcessed: messages.length,
+      streamMode: stream,
+      success: true
+    });
 
     if (stream) {
       return new Response(response.body, {
@@ -285,27 +453,72 @@ serve(async (req) => {
       });
     } else {
       const data = await response.json();
-      return new Response(JSON.stringify(data), {
+      return new Response(JSON.stringify({ ...data, request_id: requestId }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
   } catch (error) {
-    console.error("angel-ai-public error:", error);
+    const totalTime = Date.now() - startTime;
     
-    // Log error
-    await supabase.from("api_usage_logs").insert({
-      api_key_id: apiKeyData.id,
-      endpoint: "/angel-ai-public",
-      status_code: 500,
-      error_message: error instanceof Error ? error.message : "Unknown error",
-      response_time_ms: Date.now() - startTime,
-      ip_address: req.headers.get("x-forwarded-for") || "unknown",
-      user_agent: req.headers.get("user-agent") || "unknown",
+    logSection(requestId, "ERROR OCCURRED");
+    logError(requestId, "Request Failed", error, {
+      apiKeyName: apiKeyData?.name,
+      messagesCount: messages?.length,
+      pronounStyle: pronounStyle,
+      totalTimeMs: totalTime
     });
+    
+    // Log error to database
+    if (apiKeyData) {
+      await logToDatabase(supabase, {
+        api_key_id: apiKeyData.id,
+        endpoint: "/angel-ai-public",
+        status_code: 500,
+        error_message: error instanceof Error ? error.message : "Unknown error",
+        response_time_ms: totalTime,
+        ip_address: req.headers.get("x-forwarded-for") || "unknown",
+        user_agent: req.headers.get("user-agent") || "unknown",
+        request_id: requestId,
+        pronoun_style: pronounStyle,
+        message_count: messages?.length || 0,
+        stream_mode: stream,
+        origin: req.headers.get("origin") || "unknown",
+      });
+    }
 
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
+    return new Response(JSON.stringify({ 
+      error: error instanceof Error ? error.message : "Unknown error",
+      request_id: requestId 
+    }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
+
+// ========== DATABASE LOGGING HELPER ==========
+// deno-lint-ignore no-explicit-any
+async function logToDatabase(
+  supabase: any,
+  data: {
+    api_key_id: string;
+    endpoint: string;
+    status_code: number;
+    error_message?: string;
+    response_time_ms: number;
+    ip_address: string;
+    user_agent: string;
+    request_id: string;
+    pronoun_style?: string;
+    message_count?: number;
+    stream_mode?: boolean;
+    model_used?: string;
+    origin?: string;
+  }
+) {
+  try {
+    await supabase.from("api_usage_logs").insert(data);
+  } catch (err) {
+    console.error(`[${data.request_id}] Failed to log to database:`, err);
+  }
+}

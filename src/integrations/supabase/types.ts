@@ -61,8 +61,14 @@ export type Database = {
           error_message: string | null
           id: string
           ip_address: string | null
+          message_count: number | null
+          model_used: string | null
+          origin: string | null
+          pronoun_style: string | null
+          request_id: string | null
           response_time_ms: number | null
           status_code: number | null
+          stream_mode: boolean | null
           tokens_used: number | null
           user_agent: string | null
         }
@@ -73,8 +79,14 @@ export type Database = {
           error_message?: string | null
           id?: string
           ip_address?: string | null
+          message_count?: number | null
+          model_used?: string | null
+          origin?: string | null
+          pronoun_style?: string | null
+          request_id?: string | null
           response_time_ms?: number | null
           status_code?: number | null
+          stream_mode?: boolean | null
           tokens_used?: number | null
           user_agent?: string | null
         }
@@ -85,8 +97,14 @@ export type Database = {
           error_message?: string | null
           id?: string
           ip_address?: string | null
+          message_count?: number | null
+          model_used?: string | null
+          origin?: string | null
+          pronoun_style?: string | null
+          request_id?: string | null
           response_time_ms?: number | null
           status_code?: number | null
+          stream_mode?: boolean | null
           tokens_used?: number | null
           user_agent?: string | null
         }
