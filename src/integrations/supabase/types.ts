@@ -299,7 +299,9 @@ export type Database = {
           height: number | null
           id: string
           mime_type: string | null
+          r2_key: string | null
           r2_url: string
+          status: string | null
           title: string | null
           updated_at: string
           user_id: string
@@ -314,7 +316,9 @@ export type Database = {
           height?: number | null
           id?: string
           mime_type?: string | null
+          r2_key?: string | null
           r2_url: string
+          status?: string | null
           title?: string | null
           updated_at?: string
           user_id: string
@@ -329,7 +333,9 @@ export type Database = {
           height?: number | null
           id?: string
           mime_type?: string | null
+          r2_key?: string | null
           r2_url?: string
+          status?: string | null
           title?: string | null
           updated_at?: string
           user_id?: string

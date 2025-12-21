@@ -1,8 +1,7 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Upload, 
-  Video, 
   X, 
   Check, 
   Loader2, 
@@ -17,11 +16,10 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserStore } from '@/stores/userStore';
+import { useMediaUpload } from '@/hooks/useMediaUpload';
 import { cn } from '@/lib/utils';
 
-const R2_UPLOAD_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cloudflare-r2-upload`;
-
-const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+const MAX_FILE_SIZE = 4 * 1024 * 1024 * 1024; // 4GB - Presigned URL supports large files
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'];
 
 interface UploadedVideo {
@@ -41,8 +39,6 @@ interface VideoPreview {
 export function VideoUploader() {
   const [isDragging, setIsDragging] = useState(false);
   const [videoPreview, setVideoPreview] = useState<VideoPreview | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
   const [uploadedVideos, setUploadedVideos] = useState<UploadedVideo[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
@@ -51,6 +47,78 @@ export function VideoUploader() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
   const user = useUserStore((state) => state.user);
+
+  // Use new presigned URL upload hook
+  const { 
+    uploadFile, 
+    isUploading, 
+    progress, 
+    error: uploadError,
+    reset: resetUpload 
+  } = useMediaUpload({
+    onProgress: (p) => {
+      console.log('[VideoUploader] Progress:', p.percent + '%');
+    },
+    onSuccess: (result) => {
+      console.log('[VideoUploader] Upload success:', result);
+      setUploadStatus('success');
+      
+      if (videoPreview && result.publicUrl && result.assetId) {
+        const newVideo: UploadedVideo = {
+          id: result.assetId,
+          url: result.publicUrl,
+          fileName: videoPreview.file.name,
+          fileSize: videoPreview.file.size,
+          duration: videoPreview.duration,
+        };
+        setUploadedVideos(prev => [newVideo, ...prev]);
+      }
+      
+      // Clear preview after short delay
+      setTimeout(() => {
+        clearPreview();
+      }, 1500);
+    },
+    onError: (err) => {
+      console.error('[VideoUploader] Upload error:', err);
+      setUploadStatus('error');
+    },
+  });
+
+  // Load existing videos on mount
+  useEffect(() => {
+    if (user) {
+      loadExistingVideos();
+    }
+  }, [user]);
+
+  const loadExistingVideos = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('video_metadata')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'confirmed')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      if (error) throw error;
+      
+      if (data) {
+        setUploadedVideos(data.map(v => ({
+          id: v.id,
+          url: v.r2_url || '',
+          fileName: v.title || 'Untitled',
+          fileSize: v.file_size_bytes || 0,
+          duration: v.duration_seconds || undefined,
+        })));
+      }
+    } catch (err) {
+      console.error('Error loading videos:', err);
+    }
+  };
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
@@ -135,8 +203,8 @@ export function VideoUploader() {
       URL.revokeObjectURL(videoPreview.previewUrl);
     }
     setVideoPreview(null);
-    setUploadProgress(0);
     setUploadStatus('idle');
+    resetUpload();
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -153,7 +221,7 @@ export function VideoUploader() {
     }
   };
 
-  const uploadVideo = async () => {
+  const handleUpload = async () => {
     if (!videoPreview || !user) {
       toast({
         title: 'Cần đăng nhập',
@@ -163,101 +231,10 @@ export function VideoUploader() {
       return;
     }
 
-    setIsUploading(true);
     setUploadStatus('uploading');
-    setUploadProgress(0);
-
-    try {
-      // Get auth token
-      const { data: { session } } = await supabase.auth.getSession();
-      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-      // Create FormData
-      const formData = new FormData();
-      formData.append('file', videoPreview.file);
-      formData.append('type', 'video');
-
-      // Simulate progress (since fetch doesn't support progress natively)
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + Math.random() * 15;
-        });
-      }, 300);
-
-      // Upload to R2
-      const response = await fetch(R2_UPLOAD_URL, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-        },
-        body: formData,
-      });
-
-      clearInterval(progressInterval);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Upload thất bại');
-      }
-
-      const result = await response.json();
-      setUploadProgress(100);
-      setUploadStatus('success');
-
-      // Save to video_metadata table
-      const { data: videoData, error: dbError } = await supabase
-        .from('video_metadata')
-        .insert({
-          user_id: user.id,
-          title: videoPreview.file.name,
-          r2_url: result.url,
-          file_type: 'video',
-          file_size_bytes: videoPreview.file.size,
-          duration_seconds: videoPreview.duration ? Math.floor(videoPreview.duration) : null,
-          mime_type: videoPreview.file.type,
-        })
-        .select()
-        .single();
-
-      if (dbError) {
-        console.error('Error saving metadata:', dbError);
-      }
-
-      // Add to uploaded list
-      const newVideo: UploadedVideo = {
-        id: videoData?.id || Date.now().toString(),
-        url: result.url,
-        fileName: videoPreview.file.name,
-        fileSize: videoPreview.file.size,
-        duration: videoPreview.duration,
-      };
-      setUploadedVideos(prev => [newVideo, ...prev]);
-
-      toast({
-        title: '☁️ Upload thành công!',
-        description: 'Video đã được lưu trên Cloudflare R2 CDN',
-      });
-
-      // Clear preview after short delay
-      setTimeout(() => {
-        clearPreview();
-      }, 1500);
-
-    } catch (error) {
-      console.error('Upload error:', error);
-      setUploadStatus('error');
-      toast({
-        title: 'Lỗi upload',
-        description: error instanceof Error ? error.message : 'Không thể upload video',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsUploading(false);
-    }
+    
+    // Use presigned URL upload flow
+    await uploadFile(videoPreview.file, videoPreview.duration);
   };
 
   const deleteVideo = async (video: UploadedVideo) => {
@@ -291,13 +268,13 @@ export function VideoUploader() {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-angel-gold/10 text-angel-gold mb-4"
           >
             <Cloud className="w-4 h-4" />
-            <span className="text-sm font-medium">Cloudflare R2 CDN</span>
+            <span className="text-sm font-medium">Cloudflare R2 CDN • Presigned URL</span>
           </motion.div>
           <h2 className="text-2xl font-semibold mb-2">
             Upload <span className="text-gradient-divine">Video</span>
           </h2>
           <p className="text-muted-foreground">
-            Video sẽ được lưu trữ trên Cloudflare R2 với tốc độ streaming toàn cầu
+            Direct upload với real-time progress • Hỗ trợ file lớn đến 4GB
           </p>
         </div>
 
@@ -406,25 +383,25 @@ export function VideoUploader() {
                   </div>
                 </div>
 
-                {/* Progress Bar */}
+                {/* Progress Bar - Real progress from XMLHttpRequest */}
                 {uploadStatus !== 'idle' && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">
-                        {uploadStatus === 'uploading' && 'Đang upload...'}
+                        {uploadStatus === 'uploading' && `Đang upload... ${formatFileSize(progress.loaded)} / ${formatFileSize(progress.total)}`}
                         {uploadStatus === 'success' && 'Upload thành công!'}
-                        {uploadStatus === 'error' && 'Upload thất bại'}
+                        {uploadStatus === 'error' && (uploadError || 'Upload thất bại')}
                       </span>
                       <span className={cn(
                         "font-medium",
                         uploadStatus === 'success' && "text-green-500",
                         uploadStatus === 'error' && "text-destructive"
                       )}>
-                        {Math.round(uploadProgress)}%
+                        {progress.percent}%
                       </span>
                     </div>
                     <Progress 
-                      value={uploadProgress} 
+                      value={progress.percent} 
                       className={cn(
                         "h-2",
                         uploadStatus === 'success' && "[&>div]:bg-green-500",
@@ -438,7 +415,7 @@ export function VideoUploader() {
                 {uploadStatus === 'idle' && (
                   <Button
                     className="w-full bg-gradient-to-r from-angel-gold to-angel-pink hover:opacity-90"
-                    onClick={uploadVideo}
+                    onClick={handleUpload}
                     disabled={isUploading || !user}
                   >
                     {isUploading ? (
@@ -446,7 +423,7 @@ export function VideoUploader() {
                     ) : (
                       <Cloud className="w-4 h-4 mr-2" />
                     )}
-                    Upload lên R2 CDN
+                    Upload lên R2 CDN (Presigned URL)
                   </Button>
                 )}
 
@@ -499,10 +476,9 @@ export function VideoUploader() {
 
         {/* Login Prompt */}
         {!user && (
-          <div className="text-center py-6 bg-card rounded-xl border border-border">
-            <Video className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+          <div className="text-center p-6 bg-muted/50 rounded-xl">
             <p className="text-muted-foreground">
-              Đăng nhập để upload và quản lý video của bạn
+              Vui lòng đăng nhập để upload video
             </p>
           </div>
         )}
