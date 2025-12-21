@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MessageCircle, ImageIcon, Video, Menu, PanelLeft, PanelLeftClose, Upload } from 'lucide-react';
+import { MessageCircle, ImageIcon, Video, Menu, PanelLeft, PanelLeftClose, BookOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ChatBubble } from '@/components/chat/ChatBubble';
 import { ChatInput } from '@/components/chat/ChatInput';
@@ -9,7 +9,7 @@ import { GuestLimitModal } from '@/components/chat/GuestLimitModal';
 import { ModelSelector } from '@/components/chat/ModelSelector';
 import { ImageGenerator } from '@/components/chat/ImageGenerator';
 import { VideoGenerator } from '@/components/chat/VideoGenerator';
-import { VideoUploader } from '@/components/chat/VideoUploader';
+import { JournalFeed } from '@/components/journal/JournalFeed';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { DailyAffirmation } from '@/components/chat/DailyAffirmation';
 import { MantraSuggestion } from '@/components/chat/MantraSuggestion';
@@ -27,7 +27,7 @@ import angelLogo from '@/assets/angel-logo.png';
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/angel-ai`;
 const TITLE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-chat-title`;
 
-type TabType = 'chat' | 'image' | 'video' | 'upload';
+type TabType = 'chat' | 'image' | 'video' | 'journal';
 
 const getStoredMode = (): SelectionMode => {
   const stored = localStorage.getItem('angel-ai-mode');
@@ -799,7 +799,7 @@ export default function Chat() {
 
         {activeTab === 'image' && <ImageGenerator />}
         {activeTab === 'video' && <VideoGenerator />}
-        {activeTab === 'upload' && <VideoUploader />}
+        {activeTab === 'journal' && <JournalFeed />}
       </div>
 
       {/* Guest Limit Modal */}
