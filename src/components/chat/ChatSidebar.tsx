@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   Plus, MessageSquare, Trash2, Edit2, Check, X, ChevronLeft,
   Home, User, Wallet, Code, ImageIcon, Video, MessageCircle,
-  Sparkles, Search, ChevronUp, LogOut
+  Sparkles, Search, ChevronUp, LogOut, Upload
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 
-type TabType = 'chat' | 'image' | 'video';
+type TabType = 'chat' | 'image' | 'video' | 'upload';
 
 interface ChatSidebarProps {
   sessions: ChatSession[];
@@ -228,6 +228,7 @@ const tabs = [
   { id: 'chat' as const, label: 'Chat', icon: MessageCircle },
   { id: 'image' as const, label: 'Tạo ảnh', icon: ImageIcon },
   { id: 'video' as const, label: 'Tạo video', icon: Video },
+  { id: 'upload' as const, label: 'Upload R2', icon: Upload },
 ];
 
 const navLinks = [
