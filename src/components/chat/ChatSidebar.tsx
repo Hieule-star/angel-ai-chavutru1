@@ -350,6 +350,11 @@ export function ChatSidebar({
                   MỚI
                 </Badge>
               )}
+              {tab.id === 'upload' && (
+                <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0 border-primary/50 text-primary">
+                  R2
+                </Badge>
+              )}
             </Button>
           ))}
         </div>
