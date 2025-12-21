@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.media-confirm-upload]
 verify_jwt = false
+
+[functions.media-transform]
+verify_jwt = false
