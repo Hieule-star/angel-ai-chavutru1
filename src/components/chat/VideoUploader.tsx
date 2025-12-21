@@ -9,7 +9,8 @@ import {
   Pause,
   Cloud,
   FileVideo,
-  Trash2
+  Trash2,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -17,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserStore } from '@/stores/userStore';
 import { useMediaUpload } from '@/hooks/useMediaUpload';
+import { useVideoTransform } from '@/hooks/useVideoTransform';
 import { cn } from '@/lib/utils';
 
 const MAX_FILE_SIZE = 4 * 1024 * 1024 * 1024; // 4GB - Presigned URL supports large files
@@ -28,6 +30,7 @@ interface UploadedVideo {
   fileName: string;
   fileSize: number;
   duration?: number;
+  thumbnailUrl?: string;
 }
 
 interface VideoPreview {
@@ -42,11 +45,13 @@ export function VideoUploader() {
   const [uploadedVideos, setUploadedVideos] = useState<UploadedVideo[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
+  const [loadingThumbnails, setLoadingThumbnails] = useState<Set<string>>(new Set());
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
   const user = useUserStore((state) => state.user);
+  const { getThumbnail } = useVideoTransform();
 
   // Use new presigned URL upload hook
   const { 
@@ -107,16 +112,48 @@ export function VideoUploader() {
       if (error) throw error;
       
       if (data) {
-        setUploadedVideos(data.map(v => ({
+        const videos = data.map(v => ({
           id: v.id,
           url: v.r2_url || '',
           fileName: v.title || 'Untitled',
           fileSize: v.file_size_bytes || 0,
           duration: v.duration_seconds || undefined,
-        })));
+          thumbnailUrl: v.thumbnail_url || undefined,
+        }));
+        setUploadedVideos(videos);
+        
+        // Load thumbnails for videos that don't have cached ones
+        videos.forEach(async (video) => {
+          if (!video.thumbnailUrl && video.id) {
+            loadThumbnail(video.id);
+          }
+        });
       }
     } catch (err) {
       console.error('Error loading videos:', err);
+    }
+  };
+
+  const loadThumbnail = async (videoId: string) => {
+    if (loadingThumbnails.has(videoId)) return;
+    
+    setLoadingThumbnails(prev => new Set(prev).add(videoId));
+    
+    try {
+      const thumbnailUrl = await getThumbnail(videoId);
+      if (thumbnailUrl) {
+        setUploadedVideos(prev => 
+          prev.map(v => v.id === videoId ? { ...v, thumbnailUrl } : v)
+        );
+      }
+    } catch (err) {
+      console.error('Error loading thumbnail:', err);
+    } finally {
+      setLoadingThumbnails(prev => {
+        const next = new Set(prev);
+        next.delete(videoId);
+        return next;
+      });
     }
   };
 
@@ -450,8 +487,21 @@ export function VideoUploader() {
                   animate={{ opacity: 1, x: 0 }}
                   className="flex items-center gap-3 p-3 bg-card rounded-lg border border-border"
                 >
-                  <div className="w-16 h-10 rounded bg-black flex items-center justify-center overflow-hidden">
-                    <video src={video.url} className="w-full h-full object-cover" />
+                  <div className="w-16 h-10 rounded bg-black flex items-center justify-center overflow-hidden relative">
+                    {video.thumbnailUrl ? (
+                      <img 
+                        src={video.thumbnailUrl} 
+                        alt={video.fileName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : loadingThumbnails.has(video.id) ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                    ) : (
+                      <video src={video.url} className="w-full h-full object-cover" />
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
+                      <Play className="w-4 h-4 text-white" />
+                    </div>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{video.fileName}</p>

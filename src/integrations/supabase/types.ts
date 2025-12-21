@@ -299,9 +299,12 @@ export type Database = {
           height: number | null
           id: string
           mime_type: string | null
+          preview_gif_url: string | null
           r2_key: string | null
           r2_url: string | null
+          resized_urls: Json | null
           status: string | null
+          thumbnail_url: string | null
           title: string | null
           updated_at: string
           user_id: string
@@ -316,9 +319,12 @@ export type Database = {
           height?: number | null
           id?: string
           mime_type?: string | null
+          preview_gif_url?: string | null
           r2_key?: string | null
           r2_url?: string | null
+          resized_urls?: Json | null
           status?: string | null
+          thumbnail_url?: string | null
           title?: string | null
           updated_at?: string
           user_id: string
@@ -333,9 +339,12 @@ export type Database = {
           height?: number | null
           id?: string
           mime_type?: string | null
+          preview_gif_url?: string | null
           r2_key?: string | null
           r2_url?: string | null
+          resized_urls?: Json | null
           status?: string | null
+          thumbnail_url?: string | null
           title?: string | null
           updated_at?: string
           user_id?: string
