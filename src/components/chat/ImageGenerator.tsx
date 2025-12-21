@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Download, Loader2, ImageIcon, Trash2, FolderOpen, Plus } from 'lucide-react';
+import { Sparkles, Download, Loader2, ImageIcon, Trash2, FolderOpen, Plus, Cloud } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -10,6 +10,7 @@ import { useUserStore } from '@/stores/userStore';
 import angelLogo from '@/assets/angel-logo.png';
 
 const IMAGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/angel-image`;
+const R2_UPLOAD_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cloudflare-r2-upload`;
 
 interface GeneratedImage {
   id?: string;
@@ -80,45 +81,69 @@ export function ImageGenerator() {
       const response = await fetch(imageUrl);
       const blob = await response.blob();
       
-      // Generate unique filename
-      const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.png`;
-      
-      // Upload to storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('generated-images')
-        .upload(fileName, blob, { contentType: 'image/png' });
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-      if (uploadError) throw uploadError;
+      // Create FormData for R2 upload
+      const formData = new FormData();
+      formData.append('file', blob, `${Date.now()}.png`);
+      formData.append('type', 'image');
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('generated-images')
-        .getPublicUrl(fileName);
+      // Upload to Cloudflare R2 via edge function
+      const uploadResponse = await fetch(R2_UPLOAD_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: formData,
+      });
 
-      // Save metadata to database
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to upload to R2');
+      }
+
+      const uploadResult = await uploadResponse.json();
+      console.log('R2 upload result:', uploadResult);
+
+      // Save metadata to generated_images table (keep existing table for backward compatibility)
       const { data: imageData, error: dbError } = await supabase
         .from('generated_images')
         .insert({
           user_id: user.id,
           prompt: promptText,
-          image_url: urlData.publicUrl,
+          image_url: uploadResult.url,
         })
         .select()
         .single();
 
       if (dbError) throw dbError;
 
+      // Also save to video_metadata for unified media management
+      await supabase
+        .from('video_metadata')
+        .insert({
+          user_id: user.id,
+          title: promptText.slice(0, 100),
+          description: promptText,
+          r2_url: uploadResult.url,
+          file_type: 'image',
+          file_size_bytes: uploadResult.fileSize,
+          mime_type: uploadResult.fileType,
+        });
+
       toast({
-        title: '💾 Đã lưu vào Gallery!',
-        description: 'Hình ảnh đã được lưu trữ an toàn',
+        title: '☁️ Đã lưu vào R2 CDN!',
+        description: 'Hình ảnh đã được lưu trữ trên Cloudflare R2',
       });
 
       return imageData;
     } catch (error) {
-      console.error('Error saving image:', error);
+      console.error('Error saving image to R2:', error);
       toast({
         title: 'Lỗi lưu hình ảnh',
-        description: 'Không thể lưu hình ảnh vào gallery',
+        description: error instanceof Error ? error.message : 'Không thể lưu hình ảnh vào R2',
         variant: 'destructive',
       });
       return null;
@@ -131,22 +156,34 @@ export function ImageGenerator() {
     if (!user) return;
 
     try {
-      // Extract file path from URL
-      const urlParts = imageUrl.split('/generated-images/');
-      const filePath = urlParts[1];
-
-      // Delete from storage
-      if (filePath) {
-        await supabase.storage.from('generated-images').remove([filePath]);
+      // Check if it's an old Supabase Storage URL or new R2 URL
+      const isSupabaseUrl = imageUrl.includes('/generated-images/');
+      
+      if (isSupabaseUrl) {
+        // Legacy: Delete from Supabase storage
+        const urlParts = imageUrl.split('/generated-images/');
+        const filePath = urlParts[1];
+        if (filePath) {
+          await supabase.storage.from('generated-images').remove([filePath]);
+        }
       }
+      // Note: R2 deletion would require a separate edge function
+      // For now, we just remove from database (R2 files can be cleaned up separately)
 
-      // Delete from database
+      // Delete from generated_images table
       const { error } = await supabase
         .from('generated_images')
         .delete()
         .eq('id', imageId);
 
       if (error) throw error;
+
+      // Also delete from video_metadata if exists
+      await supabase
+        .from('video_metadata')
+        .delete()
+        .eq('r2_url', imageUrl)
+        .eq('user_id', user.id);
 
       setSavedImages(prev => prev.filter(img => img.id !== imageId));
       toast({
@@ -338,12 +375,12 @@ export function ImageGenerator() {
                               disabled={isSaving}
                               className="bg-card/90 hover:bg-card shadow-lg"
                             >
-                              {isSaving ? (
+                          {isSaving ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
                               ) : (
                                 <>
-                                  <FolderOpen className="w-4 h-4 mr-1" />
-                                  Lưu Gallery
+                                  <Cloud className="w-4 h-4 mr-1" />
+                                  Lưu R2
                                 </>
                               )}
                             </Button>
