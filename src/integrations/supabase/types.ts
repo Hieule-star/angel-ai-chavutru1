@@ -300,7 +300,7 @@ export type Database = {
           id: string
           mime_type: string | null
           r2_key: string | null
-          r2_url: string
+          r2_url: string | null
           status: string | null
           title: string | null
           updated_at: string
@@ -317,7 +317,7 @@ export type Database = {
           id?: string
           mime_type?: string | null
           r2_key?: string | null
-          r2_url: string
+          r2_url?: string | null
           status?: string | null
           title?: string | null
           updated_at?: string
@@ -334,7 +334,7 @@ export type Database = {
           id?: string
           mime_type?: string | null
           r2_key?: string | null
-          r2_url?: string
+          r2_url?: string | null
           status?: string | null
           title?: string | null
           updated_at?: string
