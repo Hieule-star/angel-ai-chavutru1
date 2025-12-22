@@ -4,6 +4,7 @@ import { BookOpen, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PostComposer } from './PostComposer';
 import { PostCard, type Post, type PostMedia } from './PostCard';
+import { EditPostModal } from './EditPostModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserStore } from '@/stores/userStore';
 import { useToast } from '@/hooks/use-toast';
@@ -12,6 +13,7 @@ export function JournalFeed() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
   
   const user = useUserStore((state) => state.user);
   const isAuthenticated = useUserStore((state) => state.isAuthenticated);
@@ -117,6 +119,14 @@ export function JournalFeed() {
     }
   };
 
+  const handleEditPost = (post: Post) => {
+    setEditingPost(post);
+  };
+
+  const handlePostUpdated = () => {
+    loadPosts();
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center py-12 px-4">
@@ -182,12 +192,23 @@ export function JournalFeed() {
               <PostCard
                 key={post.id}
                 post={post}
+                onEdit={handleEditPost}
                 onDelete={handleDeletePost}
               />
             ))}
           </AnimatePresence>
         )}
       </div>
+
+      {/* Edit Post Modal */}
+      {editingPost && (
+        <EditPostModal
+          post={editingPost}
+          isOpen={!!editingPost}
+          onClose={() => setEditingPost(null)}
+          onPostUpdated={handlePostUpdated}
+        />
+      )}
     </div>
   );
 }
