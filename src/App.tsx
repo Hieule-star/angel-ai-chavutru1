@@ -25,6 +25,7 @@ import Developers from "./pages/Developers";
 import DeveloperKeys from "./pages/DeveloperKeys";
 import Install from "./pages/Install";
 import Platform from "./pages/docs/Platform";
+import LightConstitution from "./pages/LightConstitution";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +66,7 @@ function AppContent() {
       <Route path="/developers/keys" element={<DeveloperKeys />} />
       <Route path="/install" element={<Install />} />
       <Route path="/docs/platform" element={<Platform />} />
+      <Route path="/light-constitution" element={<LightConstitution />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
