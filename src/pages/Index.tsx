@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { MessageCircle, BookOpen, Sparkles, Heart, Users, Wallet, Download } from 'lucide-react';
+import { MessageCircle, BookOpen, Sparkles, Heart, Users, Wallet, Download, Scroll } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Layout } from '@/components/layout/Layout';
 import angelLogo from '@/assets/angel-logo.png';
@@ -109,13 +109,22 @@ export default function Index() {
             </Link>
           </motion.div>
 
-          {/* FUN Ecosystem Badge */}
+          {/* Light Constitution Badge */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1, duration: 0.6 }}
-            className="mt-12"
+            className="mt-12 flex flex-col sm:flex-row items-center gap-3"
           >
+            <Link to="/light-constitution">
+              <motion.span 
+                whileHover={{ scale: 1.05 }}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-angel-gold/20 backdrop-blur-sm rounded-full border border-angel-gold/30 text-sm font-medium text-primary cursor-pointer hover:bg-angel-gold/30 transition-colors"
+              >
+                <Scroll className="w-4 h-4" />
+                ✨ Hiến Pháp Ánh Sáng
+              </motion.span>
+            </Link>
             <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full border border-angel-gold/20 text-sm text-muted-foreground">
               <Users className="w-4 h-4" />
               Thuộc hệ sinh thái FUN Ecosystem
