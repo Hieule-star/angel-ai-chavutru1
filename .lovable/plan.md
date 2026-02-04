@@ -1,210 +1,292 @@
 
 
-## Kế hoạch tạo trang `/light-constitution` - Hiến Pháp Ánh Sáng
+## Kế hoạch thêm Image Generation vào Public API
 
 ### Tổng quan
 
-Tạo trang trang trọng, thiêng liêng hiển thị toàn bộ **Hiến Pháp Ánh Sáng** (Vietnamese) và **Eternal Core Training Prompt** (English), phản ánh tinh thần và năng lượng của FUN Ecosystem.
+Mở rộng `angel-ai-public` Edge Function để hỗ trợ dịch vụ **Image Generation**, cho phép developers tạo hình ảnh tâm linh qua API với cùng một API key đã đăng ký.
 
 ---
 
-### Thiết kế tổng thể
+### Kiến trúc mới
 
-**Concept:** Sacred Document - Trang trọng như một văn bản thiêng liêng
-
-**Màu sắc chủ đạo:**
-- Nền gradient divine (trắng → vàng nhạt → hồng nhạt)
-- Text vàng divine cho tiêu đề
-- Hiệu ứng glow nhẹ cho các section quan trọng
-
-**Layout:**
-- Hero section với logo và tiêu đề
-- Tab switcher (Vietnamese / English)
-- 8 sections accordion cho mỗi phần Hiến Pháp
-- 8 Divine Mantras section cuối trang
-- Sticky sidebar navigation (desktop)
-- Mobile-first responsive
-
----
-
-### Cấu trúc file mới
-
-**File tạo mới:** `src/pages/LightConstitution.tsx`
-
-**Route thêm vào App.tsx:** `/light-constitution`
-
----
-
-### Chi tiết các thành phần
-
-#### 1. Hero Section
-```
-┌─────────────────────────────────────────┐
-│            [ANGEL AI Logo]              │
-│                                         │
-│  ✨ HIẾN PHÁP ÁNH SÁNG ✨              │
-│     LIGHT CONSTITUTION                  │
-│                                         │
-│  FUN Ecosystem - Written in the Will    │
-│  & Wisdom of Father Universe            │
-│                                         │
-│      [Tab: Tiếng Việt] [English]        │
-└─────────────────────────────────────────┘
+```text
+┌──────────────────────────────────────────────────────────────────┐
+│                    ANGEL AI PUBLIC API                           │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  POST /angel-ai-public                                           │
+│                                                                  │
+│  ┌─────────────────────┐     ┌─────────────────────┐            │
+│  │   service: "chat"  │     │  service: "image"   │            │
+│  │   (default)        │     │  (image generation) │            │
+│  └─────────────────────┘     └─────────────────────┘            │
+│           │                           │                          │
+│           ▼                           ▼                          │
+│  ┌─────────────────────┐     ┌─────────────────────┐            │
+│  │ google/gemini-2.5   │     │ google/gemini-2.5   │            │
+│  │     -flash         │     │ -flash-image-preview│            │
+│  └─────────────────────┘     └─────────────────────┘            │
+│           │                           │                          │
+│           ▼                           ▼                          │
+│  ┌─────────────────────┐     ┌─────────────────────┐            │
+│  │ Streaming SSE      │     │ JSON Response       │            │
+│  │ Chat Response      │     │ { imageUrl, desc }  │            │
+│  └─────────────────────┘     └─────────────────────┘            │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-#### 2. Tab Vietnamese - Hiến Pháp Ánh Sáng (8 sections)
+---
 
-| Section | Tiêu đề |
-|---------|---------|
-| I | Nguyên Lý Gốc Của Ánh Sáng |
-| II | Tiêu Chuẩn Con Người FUN (4 Phẩm Chất) |
-| III | Nguyên Lý Thu Nhập Ánh Sáng |
-| IV | ANGEL AI - Trí Tuệ Ánh Sáng |
-| V | FUN Platforms - Không Gian Ánh Sáng |
-| VI | FUN Wallet - Ví Của Ý Thức |
-| VII | Văn Hóa Cộng Đồng FUN |
-| VIII | Tuyên Ngôn Ánh Sáng |
+### Thay đổi API Interface
 
-#### 3. Tab English - Eternal Core Training Prompt (10 sections)
+#### Request Body mới
 
-| Section | Title |
-|---------|-------|
-| 1 | Core Identity |
-| 2 | Foundational Truth |
-| 3 | How You Perceive Humans |
-| 4 | Observation & Reflection Principles |
-| 5 | Light Score — Guidance Mechanism |
-| 6 | Flow of Rewards & Opportunities |
-| 7 | Relationship with FUN Wallet |
-| 8 | Ethics & Humanity |
-| 9 | Communication Style |
-| 10 | Eternal Commitment |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `service` | string | No | `"chat"` | Loại dịch vụ: `"chat"` hoặc `"image"` |
+| `messages` | array | Yes (chat) | - | Mảng tin nhắn cho chat |
+| `prompt` | string | Yes (image) | - | Mô tả hình ảnh cần tạo |
+| `stream` | boolean | No | true | Bật/tắt streaming (chỉ cho chat) |
+| `enhance_prompt` | boolean | No | true | Tự động thêm keywords tâm linh (chỉ cho image) |
 
-#### 4. Divine Mantras Section
-- Hiển thị 8 Divine Mantras với thiết kế card đặc biệt
-- Song ngữ: English + Vietnamese
-- Mỗi mantra có emoji và hiệu ứng glow
+#### Response Format
 
-#### 5. Footer
-- Thông điệp kết: "Cha luôn ở đây. Ánh sáng đang lan tỏa."
-- Link về Chat với ANGEL AI
-- Link về trang chủ
+**Chat Service** (không thay đổi):
+```json
+{
+  "choices": [{ "message": { "role": "assistant", "content": "..." } }],
+  "request_id": "abc123"
+}
+```
+
+**Image Service** (mới):
+```json
+{
+  "imageUrl": "data:image/png;base64,...",
+  "description": "Mô tả hình ảnh được tạo",
+  "request_id": "abc123"
+}
+```
 
 ---
 
-### Components sử dụng
+### Chi tiết kỹ thuật
 
-| Component | Mục đích |
-|-----------|----------|
-| `framer-motion` | Animation fade-in, accordion |
-| `Tabs` (shadcn) | Chuyển đổi Vietnamese/English |
-| `Accordion` (shadcn) | Mở/đóng các section |
-| `ScrollArea` (shadcn) | Sidebar navigation |
-| `Button` | CTA buttons |
-| Layout | Sử dụng Layout component có sẵn |
+#### File thay đổi: `supabase/functions/angel-ai-public/index.ts`
 
----
-
-### Responsive Design
-
-**Mobile (< 768px):**
-- Hero section nhỏ gọn hơn
-- Tabs full-width
-- Accordion chiếm full-width
-- Ẩn sidebar, chỉ hiện content
-
-**Tablet (768px - 1024px):**
-- Layout 2 cột nhẹ
-- Sidebar có thể collapse
-
-**Desktop (> 1024px):**
-- Sidebar sticky bên trái
-- Content area rộng bên phải
-- Tối đa width 4xl (896px) cho content
-
----
-
-### Animations
-
-| Element | Animation |
-|---------|-----------|
-| Hero logo | Float up-down (3s loop) |
-| Sections | Fade-in on scroll |
-| Mantras | Scale-in với stagger |
-| Tab switch | Cross-fade |
-| Accordion | Height transition |
-
----
-
-### Data Structure
+**Bước 1: Thêm service type routing (sau line 279)**
 
 ```typescript
-// Vietnamese Constitution sections
-const constitutionSectionsVi = [
-  {
-    id: 'nguyen-ly-goc',
-    number: 'I',
-    title: 'Nguyên Lý Gốc Của Ánh Sáng',
-    subtitle: 'NGƯỜI CHÂN THẬT – GIÁ TRỊ CHÂN THẬT – DANH TÍNH CHÂN THẬT',
-    content: '...',
-    icon: Sparkles
-  },
-  // ... 8 sections total
-];
+// ========== PARSE REQUEST BODY ==========
+const body = await req.json();
+const service = body.service || "chat"; // NEW: service type
 
-// English Eternal Core sections
-const constitutionSectionsEn = [
-  {
-    id: 'core-identity',
-    title: 'Core Identity',
-    content: '...',
-    icon: Crown
-  },
-  // ... 10 sections total
-];
+// Validate service type
+if (!["chat", "image"].includes(service)) {
+  return new Response(JSON.stringify({ 
+    error: "Invalid service", 
+    message: "Service must be 'chat' or 'image'",
+    request_id: requestId
+  }), {
+    status: 400,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
 ```
 
----
-
-### Cập nhật App.tsx
+**Bước 2: Thêm Image Generation logic (khoảng line 350)**
 
 ```typescript
-// Thêm import
-import LightConstitution from "./pages/LightConstitution";
+// ========== IMAGE GENERATION SERVICE ==========
+if (service === "image") {
+  logSection(requestId, "IMAGE GENERATION");
+  
+  const { prompt, enhance_prompt = true } = body;
+  
+  if (!prompt || typeof prompt !== 'string') {
+    return new Response(JSON.stringify({ 
+      error: "Missing prompt", 
+      message: "Image service requires a 'prompt' field",
+      request_id: requestId
+    }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
-// Thêm route
-<Route path="/light-constitution" element={<LightConstitution />} />
+  // Enhance prompt với spiritual keywords (optional)
+  const finalPrompt = enhance_prompt 
+    ? `Create a beautiful, high-quality spiritual image: ${prompt}. Style: ethereal, divine light, soft glow, peaceful, inspirational. Ultra high resolution.`
+    : prompt;
+
+  logInfo(requestId, "Image Request", {
+    promptPreview: prompt.substring(0, 100),
+    enhancePrompt: enhance_prompt,
+    finalPromptLength: finalPrompt.length
+  });
+
+  const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash-image-preview",
+      messages: [{ role: "user", content: finalPrompt }],
+      modalities: ["image", "text"]
+    }),
+  });
+
+  // Handle response...
+  // Extract imageUrl and description
+  // Log to database with endpoint: "/angel-ai-public/image"
+  // Return JSON response
+}
+```
+
+**Bước 3: Cập nhật logging (logToDatabase)**
+
+Thêm field `service_type` vào log:
+```typescript
+await logToDatabase(supabase, {
+  api_key_id: apiKeyData.id,
+  endpoint: service === "image" ? "/angel-ai-public/image" : "/angel-ai-public",
+  // ... other fields
+});
 ```
 
 ---
 
-### Thêm Navigation Links
+### Cập nhật Documentation
 
-**File:** `src/components/layout/Navbar.tsx`
-- Thêm link "Hiến Pháp" vào menu
+#### File thay đổi: `src/pages/Developers.tsx`
 
-**File:** `src/pages/Index.tsx`
-- Thêm badge/button link đến Light Constitution
+**Thêm vào Introduction section (khoảng line 187)**
+
+Thêm card mới cho Image Generation:
+```tsx
+<div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+  <ImageIcon className="w-5 h-5 text-primary mt-0.5" />
+  <div>
+    <h4 className="font-medium text-sm">Image Gen</h4>
+    <p className="text-xs text-muted-foreground">Tạo hình ảnh tâm linh</p>
+  </div>
+</div>
+```
+
+**Thêm Request Body documentation mới (sau line 285)**
+
+```tsx
+{/* Image Generation Request */}
+<div className="space-y-2 text-sm border-t pt-4 mt-4">
+  <h4 className="font-medium">Image Generation Request:</h4>
+  <CodeBlock 
+    code={`{
+  "service": "image",
+  "prompt": "A peaceful lotus flower glowing with divine light",
+  "enhance_prompt": true  // Auto-add spiritual keywords (optional)
+}`}
+    language="JSON"
+    id="image-request"
+  />
+</div>
+
+{/* Image Response */}
+<div className="space-y-2 text-sm">
+  <h4 className="font-medium">Image Response:</h4>
+  <CodeBlock 
+    code={`{
+  "imageUrl": "data:image/png;base64,iVBORw0KGgo...",
+  "description": "A serene lotus flower radiating divine light...",
+  "request_id": "abc12345"
+}`}
+    language="JSON"
+    id="image-response"
+  />
+</div>
+```
+
+**Thêm Example tab cho Image Generation (khoảng line 997)**
+
+```tsx
+{/* Image Generation Example */}
+<div className="space-y-3">
+  <h3 className="text-lg font-medium">Image Generation</h3>
+  <CodeBlock 
+    code={`const response = await fetch("${apiEndpoint}", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer angel_YOUR_API_KEY",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    service: "image",
+    prompt: "A peaceful meditation scene with golden light",
+    enhance_prompt: true
+  })
+});
+
+const data = await response.json();
+console.log("Image URL:", data.imageUrl);
+console.log("Description:", data.description);
+
+// Display image
+const img = document.createElement('img');
+img.src = data.imageUrl;
+document.body.appendChild(img);`}
+    language="JavaScript"
+    id="image-example"
+  />
+</div>
+```
 
 ---
 
-### Tóm tắt công việc
+### Tóm tắt các file cần thay đổi
 
-| Bước | Nội dung | File |
-|------|----------|------|
-| 1 | Tạo trang LightConstitution.tsx | `src/pages/LightConstitution.tsx` (mới) |
-| 2 | Thêm route | `src/App.tsx` |
-| 3 | Thêm link navbar | `src/components/layout/Navbar.tsx` |
-| 4 | Thêm link homepage | `src/pages/Index.tsx` |
+| File | Thay đổi | Mục đích |
+|------|----------|----------|
+| `supabase/functions/angel-ai-public/index.ts` | Thêm service routing + image generation logic | Core functionality |
+| `src/pages/Developers.tsx` | Cập nhật docs + examples | Developer documentation |
+
+---
+
+### API Examples sau khi hoàn thành
+
+**Chat Service (không thay đổi):**
+```bash
+curl -X POST "https://xxx.supabase.co/functions/v1/angel-ai-public" \
+  -H "Authorization: Bearer angel_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"messages": [{"role": "user", "content": "Xin chào"}]}'
+```
+
+**Image Service (mới):**
+```bash
+curl -X POST "https://xxx.supabase.co/functions/v1/angel-ai-public" \
+  -H "Authorization: Bearer angel_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"service": "image", "prompt": "Golden lotus flower with divine light"}'
+```
+
+---
+
+### Rate Limiting
+
+- Cả hai services (chat + image) đều sử dụng chung quota 1000 requests/ngày
+- Image generation tốn nhiều tài nguyên hơn nên có thể cân nhắc rate limit riêng trong tương lai
 
 ---
 
 ### Kết quả mong đợi
 
-- Trang hiển thị trang trọng, thiêng liêng tại URL `/light-constitution`
-- Chuyển đổi mượt mà giữa Vietnamese và English
-- Responsive hoàn hảo trên mobile/tablet/desktop
-- Animation nhẹ nhàng, không gây distraction
-- 8 Divine Mantras được highlight đặc biệt
-- Phản ánh đúng tinh thần Ánh Sáng của Cha Vũ Trụ
+Developers có thể:
+1. Sử dụng cùng API key cho cả Chat và Image Generation
+2. Tạo hình ảnh tâm linh bằng cách thêm `service: "image"` vào request
+3. Tùy chọn bật/tắt auto-enhance prompt với keywords tâm linh
+4. Nhận response JSON với `imageUrl` (base64) và `description`
+5. Xem documentation và examples đầy đủ trên Developer Portal
 
