@@ -1,292 +1,175 @@
 
 
-## Kế hoạch thêm Image Generation vào Public API
+## Ke hoach Chuyen hoa Ngon Ngu Anh Sang - Giai doan 1
 
-### Tổng quan
+### Tong quan
 
-Mở rộng `angel-ai-public` Edge Function để hỗ trợ dịch vụ **Image Generation**, cho phép developers tạo hình ảnh tâm linh qua API với cùng một API key đã đăng ký.
+Chuyen hoa toan bo thong bao UI (Toast, Alert, messages) tu ngon ngu phu dinh tieu cuc sang **Ngon Ngu Anh Sang** theo Bo Quy Tac cua Cha Vu Tru.
 
 ---
 
-### Kiến trúc mới
+### Nguyen tac chuyen hoa
+
+Theo dung 10 Quy Tac tu tai lieu cua Cha:
+
+1. Khong phu dinh tieu cuc - chi khang dinh chuan muc
+2. Trung dung, khong phan xet
+3. Huong len, huong mo
+4. Khong doi khang, chi chuyen hoa
+5. Ton trong y chi tu do
+6. Ngon ngu chuan muc trong code
+7. Khong ket an he thong cu
+8. Ngon ngu ve con nguoi luon nhan ai
+9. Moi thong diep luon co loi ra
+10. Ngon ngu luon "giau" (giau anh sang, tri tue, giai phap)
+
+---
+
+### Bang chuyen hoa UI Messages
+
+#### A. Toast Messages - Tieu de
+
+| Hien tai | Chuyen hoa thanh |
+|----------|-----------------|
+| "Loi" | "Can xac minh" hoac "Hanh dong tam dung" |
+| "That bai" | "Chua hoan tat" |
+| "Khong the [hanh dong]" | "[Hanh dong] can xac minh" |
+| "Dang nhap that bai" | "Can xac minh thong tin dang nhap" |
+| "Loi dang ky" | "Dang ky can hoan thien" |
+| "Upload that bai" | "Upload tam dung vi an toan" |
+
+#### B. Toast Messages - Mo ta (luon kem giai phap)
+
+| Hien tai | Chuyen hoa thanh |
+|----------|-----------------|
+| "Email hoac mat khau khong dung" | "Thong tin chua trung khop. Vui long kiem tra lai email va mat khau." |
+| "Khong the luu thong tin" | "Thong tin can duoc xac minh. Vui long thu lai." |
+| "Khong the tai du lieu" | "Du lieu dang duoc cap nhat. Vui long lam moi trang." |
+| "Khong the xoa bai viet" | "Hanh dong tam dung. Vui long thu lai sau." |
+
+#### C. Toast variant
+
+| Hien tai | Chuyen hoa thanh |
+|----------|-----------------|
+| variant: "destructive" (mau do) | Giu nguyen variant nhung cap nhat noi dung theo ngon ngu anh sang |
+
+---
+
+### Cac file can cap nhat
+
+#### 1. src/pages/Login.tsx
+- Chuyen "Dang nhap that bai" -> "Can xac minh thong tin dang nhap"
+- Chuyen "Loi" -> "Hanh dong tam dung"
+- Chuyen "Email hoac mat khau khong dung" -> "Thong tin chua trung khop. Vui long kiem tra lai."
+- Them huong dan buoc tiep theo vao moi thong bao
+
+#### 2. src/pages/Onboarding.tsx
+- Chuyen "Loi" -> "Can xac minh"
+- Chuyen "Khong the luu thong tin" -> "Thong tin can duoc xac minh de tiep tuc"
+
+#### 3. src/pages/Developers.tsx
+- Chuyen "Loi dang ky" -> "Dang ky can hoan thien"
+- Chuyen "Failed to register" -> "Registration needs completion"
+
+#### 4. src/pages/DeveloperKeys.tsx
+- Chuyen "Loi" -> "Can xac minh"
+- Chuyen cac thong bao loi -> ngon ngu huong giai phap
+
+#### 5. src/pages/Knowledge.tsx
+- Chuyen cac thong bao loi ve du lieu -> ngon ngu nang cap
+
+#### 6. src/components/chat/VideoUploader.tsx
+- Chuyen "Upload that bai" -> "Upload tam dung vi an toan"
+- Chuyen trang thai 'error' display text -> ngon ngu anh sang
+
+#### 7. src/components/chat/ImageGenerator.tsx
+- Chuyen cac thong bao loi tao anh -> ngon ngu huong giai phap
+
+#### 8. src/components/journal/PostComposer.tsx
+- Chuyen "Loi" -> "Can xu ly"
+- Chuyen "Khong the tao bai viet" -> "Bai viet can duoc xac minh. Vui long thu lai."
+
+#### 9. src/components/journal/JournalFeed.tsx
+- Chuyen cac thong bao loi ve posts -> ngon ngu anh sang
+
+#### 10. src/components/journal/EditPostModal.tsx
+- Chuyen thong bao loi cap nhat -> ngon ngu huong giai phap
+
+#### 11. src/pages/Profile.tsx
+- Chuyen cac thong bao loi profile -> ngon ngu anh sang
+
+#### 12. src/pages/Settings.tsx
+- Chuyen cac thong bao loi settings -> ngon ngu anh sang
+
+#### 13. src/pages/admin/*.tsx (Admin pages)
+- Cap nhat cac thong bao loi trong ApiKeys, ApiAnalytics, UserManagement, KnowledgeList, ChatAnalytics
+- Chuyen "errorRate" -> "verificationRate" trong ApiAnalytics
+
+#### 14. src/hooks/useMediaUpload.ts
+- Cap nhat error messages trong upload hook
+
+#### 15. src/pages/Wallet.tsx
+- Chuyen cac thong bao loi vi -> ngon ngu anh sang
+
+---
+
+### Nguyen tac ap dung cho moi thong bao
+
+Theo **Problem -> Solution Template** bat buoc cua Cha:
 
 ```text
-┌──────────────────────────────────────────────────────────────────┐
-│                    ANGEL AI PUBLIC API                           │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  POST /angel-ai-public                                           │
-│                                                                  │
-│  ┌─────────────────────┐     ┌─────────────────────┐            │
-│  │   service: "chat"  │     │  service: "image"   │            │
-│  │   (default)        │     │  (image generation) │            │
-│  └─────────────────────┘     └─────────────────────┘            │
-│           │                           │                          │
-│           ▼                           ▼                          │
-│  ┌─────────────────────┐     ┌─────────────────────┐            │
-│  │ google/gemini-2.5   │     │ google/gemini-2.5   │            │
-│  │     -flash         │     │ -flash-image-preview│            │
-│  └─────────────────────┘     └─────────────────────┘            │
-│           │                           │                          │
-│           ▼                           ▼                          │
-│  ┌─────────────────────┐     ┌─────────────────────┐            │
-│  │ Streaming SSE      │     │ JSON Response       │            │
-│  │ Chat Response      │     │ { imageUrl, desc }  │            │
-│  └─────────────────────┘     └─────────────────────┘            │
-│                                                                  │
-└──────────────────────────────────────────────────────────────────┘
+Format:
+- Challenge/Risk: [Mo ta van de trung dung]
+- Protection/Solution: [He thong da lam gi]  
+- User Action: [Nguoi dung can lam gi tiep]
+```
+
+Moi toast/alert se co:
+1. Tieu de trung dung (khong phu dinh)
+2. Mo ta kem giai phap hoac buoc tiep theo
+3. Tone am ap, ton trong, huong len
+
+---
+
+### Vi du cu the
+
+**Truoc:**
+```
+title: 'Loi'
+description: 'Khong the luu thong tin. Vui long thu lai.'
+variant: 'destructive'
+```
+
+**Sau:**
+```
+title: 'Can xac minh'
+description: 'Thong tin can duoc xac minh de tiep tuc. Vui long thu lai hoac kiem tra ket noi.'
+variant: 'destructive'
+```
+
+**Truoc:**
+```
+title: 'Dang nhap that bai'
+description: 'Email hoac mat khau khong dung'
+```
+
+**Sau:**
+```
+title: 'Can xac minh thong tin'
+description: 'Thong tin chua trung khop. Vui long kiem tra lai email va mat khau cua ban.'
 ```
 
 ---
 
-### Thay đổi API Interface
+### Ket qua mong doi
 
-#### Request Body mới
+Sau khi hoan thanh Giai doan 1:
+- Toan bo UI messages ma nguoi dung nhin thay se mang tan so Anh Sang
+- Moi thong bao deu co huong dan buoc tiep theo
+- Khong co tu ngu phu dinh tieu cuc tren giao dien
+- Trai nghiem nguoi dung am ap, ton trong, huong giai phap
+- Tuan thu 100% Checklist 7 cau cua Cha Vu Tru
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `service` | string | No | `"chat"` | Loại dịch vụ: `"chat"` hoặc `"image"` |
-| `messages` | array | Yes (chat) | - | Mảng tin nhắn cho chat |
-| `prompt` | string | Yes (image) | - | Mô tả hình ảnh cần tạo |
-| `stream` | boolean | No | true | Bật/tắt streaming (chỉ cho chat) |
-| `enhance_prompt` | boolean | No | true | Tự động thêm keywords tâm linh (chỉ cho image) |
-
-#### Response Format
-
-**Chat Service** (không thay đổi):
-```json
-{
-  "choices": [{ "message": { "role": "assistant", "content": "..." } }],
-  "request_id": "abc123"
-}
-```
-
-**Image Service** (mới):
-```json
-{
-  "imageUrl": "data:image/png;base64,...",
-  "description": "Mô tả hình ảnh được tạo",
-  "request_id": "abc123"
-}
-```
-
----
-
-### Chi tiết kỹ thuật
-
-#### File thay đổi: `supabase/functions/angel-ai-public/index.ts`
-
-**Bước 1: Thêm service type routing (sau line 279)**
-
-```typescript
-// ========== PARSE REQUEST BODY ==========
-const body = await req.json();
-const service = body.service || "chat"; // NEW: service type
-
-// Validate service type
-if (!["chat", "image"].includes(service)) {
-  return new Response(JSON.stringify({ 
-    error: "Invalid service", 
-    message: "Service must be 'chat' or 'image'",
-    request_id: requestId
-  }), {
-    status: 400,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-```
-
-**Bước 2: Thêm Image Generation logic (khoảng line 350)**
-
-```typescript
-// ========== IMAGE GENERATION SERVICE ==========
-if (service === "image") {
-  logSection(requestId, "IMAGE GENERATION");
-  
-  const { prompt, enhance_prompt = true } = body;
-  
-  if (!prompt || typeof prompt !== 'string') {
-    return new Response(JSON.stringify({ 
-      error: "Missing prompt", 
-      message: "Image service requires a 'prompt' field",
-      request_id: requestId
-    }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  // Enhance prompt với spiritual keywords (optional)
-  const finalPrompt = enhance_prompt 
-    ? `Create a beautiful, high-quality spiritual image: ${prompt}. Style: ethereal, divine light, soft glow, peaceful, inspirational. Ultra high resolution.`
-    : prompt;
-
-  logInfo(requestId, "Image Request", {
-    promptPreview: prompt.substring(0, 100),
-    enhancePrompt: enhance_prompt,
-    finalPromptLength: finalPrompt.length
-  });
-
-  const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash-image-preview",
-      messages: [{ role: "user", content: finalPrompt }],
-      modalities: ["image", "text"]
-    }),
-  });
-
-  // Handle response...
-  // Extract imageUrl and description
-  // Log to database with endpoint: "/angel-ai-public/image"
-  // Return JSON response
-}
-```
-
-**Bước 3: Cập nhật logging (logToDatabase)**
-
-Thêm field `service_type` vào log:
-```typescript
-await logToDatabase(supabase, {
-  api_key_id: apiKeyData.id,
-  endpoint: service === "image" ? "/angel-ai-public/image" : "/angel-ai-public",
-  // ... other fields
-});
-```
-
----
-
-### Cập nhật Documentation
-
-#### File thay đổi: `src/pages/Developers.tsx`
-
-**Thêm vào Introduction section (khoảng line 187)**
-
-Thêm card mới cho Image Generation:
-```tsx
-<div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-  <ImageIcon className="w-5 h-5 text-primary mt-0.5" />
-  <div>
-    <h4 className="font-medium text-sm">Image Gen</h4>
-    <p className="text-xs text-muted-foreground">Tạo hình ảnh tâm linh</p>
-  </div>
-</div>
-```
-
-**Thêm Request Body documentation mới (sau line 285)**
-
-```tsx
-{/* Image Generation Request */}
-<div className="space-y-2 text-sm border-t pt-4 mt-4">
-  <h4 className="font-medium">Image Generation Request:</h4>
-  <CodeBlock 
-    code={`{
-  "service": "image",
-  "prompt": "A peaceful lotus flower glowing with divine light",
-  "enhance_prompt": true  // Auto-add spiritual keywords (optional)
-}`}
-    language="JSON"
-    id="image-request"
-  />
-</div>
-
-{/* Image Response */}
-<div className="space-y-2 text-sm">
-  <h4 className="font-medium">Image Response:</h4>
-  <CodeBlock 
-    code={`{
-  "imageUrl": "data:image/png;base64,iVBORw0KGgo...",
-  "description": "A serene lotus flower radiating divine light...",
-  "request_id": "abc12345"
-}`}
-    language="JSON"
-    id="image-response"
-  />
-</div>
-```
-
-**Thêm Example tab cho Image Generation (khoảng line 997)**
-
-```tsx
-{/* Image Generation Example */}
-<div className="space-y-3">
-  <h3 className="text-lg font-medium">Image Generation</h3>
-  <CodeBlock 
-    code={`const response = await fetch("${apiEndpoint}", {
-  method: "POST",
-  headers: {
-    "Authorization": "Bearer angel_YOUR_API_KEY",
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    service: "image",
-    prompt: "A peaceful meditation scene with golden light",
-    enhance_prompt: true
-  })
-});
-
-const data = await response.json();
-console.log("Image URL:", data.imageUrl);
-console.log("Description:", data.description);
-
-// Display image
-const img = document.createElement('img');
-img.src = data.imageUrl;
-document.body.appendChild(img);`}
-    language="JavaScript"
-    id="image-example"
-  />
-</div>
-```
-
----
-
-### Tóm tắt các file cần thay đổi
-
-| File | Thay đổi | Mục đích |
-|------|----------|----------|
-| `supabase/functions/angel-ai-public/index.ts` | Thêm service routing + image generation logic | Core functionality |
-| `src/pages/Developers.tsx` | Cập nhật docs + examples | Developer documentation |
-
----
-
-### API Examples sau khi hoàn thành
-
-**Chat Service (không thay đổi):**
-```bash
-curl -X POST "https://xxx.supabase.co/functions/v1/angel-ai-public" \
-  -H "Authorization: Bearer angel_YOUR_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"messages": [{"role": "user", "content": "Xin chào"}]}'
-```
-
-**Image Service (mới):**
-```bash
-curl -X POST "https://xxx.supabase.co/functions/v1/angel-ai-public" \
-  -H "Authorization: Bearer angel_YOUR_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"service": "image", "prompt": "Golden lotus flower with divine light"}'
-```
-
----
-
-### Rate Limiting
-
-- Cả hai services (chat + image) đều sử dụng chung quota 1000 requests/ngày
-- Image generation tốn nhiều tài nguyên hơn nên có thể cân nhắc rate limit riêng trong tương lai
-
----
-
-### Kết quả mong đợi
-
-Developers có thể:
-1. Sử dụng cùng API key cho cả Chat và Image Generation
-2. Tạo hình ảnh tâm linh bằng cách thêm `service: "image"` vào request
-3. Tùy chọn bật/tắt auto-enhance prompt với keywords tâm linh
-4. Nhận response JSON với `imageUrl` (base64) và `description`
-5. Xem documentation và examples đầy đủ trên Developer Portal
+**Giai doan 2 (tiep theo):** Chuyen hoa Edge Function responses + System Prompt
+**Giai doan 3 (hoan thien):** Chuyen hoa code naming + log messages
 
