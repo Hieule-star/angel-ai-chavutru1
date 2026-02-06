@@ -31,8 +31,8 @@ export default function Login() {
     e.preventDefault();
     if (!email || !password) {
       toast({
-        title: 'Lỗi',
-        description: 'Vui lòng điền đầy đủ thông tin',
+        title: 'Cần hoàn thiện thông tin',
+        description: 'Vui lòng điền đầy đủ email và mật khẩu để tiếp tục.',
         variant: 'destructive',
       });
       return;
@@ -40,8 +40,8 @@ export default function Login() {
 
     if (password.length < 6) {
       toast({
-        title: 'Lỗi',
-        description: 'Mật khẩu phải có ít nhất 6 ký tự',
+        title: 'Cần hoàn thiện thông tin',
+        description: 'Mật khẩu cần có ít nhất 6 ký tự để đảm bảo an toàn.',
         variant: 'destructive',
       });
       return;
@@ -55,13 +55,13 @@ export default function Login() {
         if (error) {
           if (error.message.includes('Invalid login credentials')) {
             toast({
-              title: 'Đăng nhập thất bại',
-              description: 'Email hoặc mật khẩu không đúng',
+              title: 'Cần xác minh thông tin',
+              description: 'Thông tin chưa trùng khớp. Vui lòng kiểm tra lại email và mật khẩu của bạn.',
               variant: 'destructive',
             });
           } else {
             toast({
-              title: 'Lỗi',
+              title: 'Hành động tạm dừng',
               description: error.message,
               variant: 'destructive',
             });
@@ -78,13 +78,13 @@ export default function Login() {
         if (error) {
           if (error.message.includes('already registered')) {
             toast({
-              title: 'Email đã tồn tại',
-              description: 'Vui lòng đăng nhập hoặc sử dụng email khác',
+              title: 'Email đã được đăng ký',
+              description: 'Vui lòng đăng nhập hoặc sử dụng email khác để tiếp tục.',
               variant: 'destructive',
             });
           } else {
             toast({
-              title: 'Lỗi',
+              title: 'Đăng ký cần hoàn thiện',
               description: error.message,
               variant: 'destructive',
             });
@@ -99,8 +99,8 @@ export default function Login() {
       }
     } catch (error) {
       toast({
-        title: 'Lỗi',
-        description: 'Có lỗi xảy ra, vui lòng thử lại',
+        title: 'Hành động tạm dừng',
+        description: 'Hệ thống cần xử lý. Vui lòng thử lại sau giây lát.',
         variant: 'destructive',
       });
     }
@@ -113,8 +113,8 @@ export default function Login() {
     const { error } = await signInWithGoogle();
     if (error) {
       toast({
-        title: 'Lỗi',
-        description: error.message,
+        title: 'Kết nối tạm dừng',
+        description: 'Vui lòng thử lại để kết nối với Google.',
         variant: 'destructive',
       });
     }

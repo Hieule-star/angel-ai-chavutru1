@@ -189,8 +189,8 @@ export function useMediaUpload(options: UseMediaUploadOptions = {}) {
       options.onError?.(errorMsg);
       
       toast({
-        title: 'Lỗi upload',
-        description: errorMsg,
+        title: 'Upload tạm dừng',
+        description: 'Vui lòng kiểm tra kết nối và thử lại.',
         variant: 'destructive',
       });
 

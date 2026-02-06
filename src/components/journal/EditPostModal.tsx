@@ -56,8 +56,8 @@ export function EditPostModal({ post, isOpen, onClose, onPostUpdated }: EditPost
     } catch (error) {
       console.error('Error updating post:', error);
       toast({
-        title: 'Lỗi',
-        description: 'Không thể cập nhật bài viết. Vui lòng thử lại.',
+        title: 'Cần xử lý',
+        description: 'Cập nhật cần được xác minh. Vui lòng thử lại.',
         variant: 'destructive',
       });
     } finally {

@@ -69,7 +69,7 @@ export function ImageGenerator() {
     if (!user) {
       toast({
         title: 'Cần đăng nhập',
-        description: 'Vui lòng đăng nhập để lưu hình ảnh vào gallery',
+        description: 'Vui lòng đăng nhập để lưu hình ảnh vào gallery.',
         variant: 'destructive',
       });
       return null;
@@ -142,8 +142,8 @@ export function ImageGenerator() {
     } catch (error) {
       console.error('Error saving image to R2:', error);
       toast({
-        title: 'Lỗi lưu hình ảnh',
-        description: error instanceof Error ? error.message : 'Không thể lưu hình ảnh vào R2',
+        title: 'Lưu hình ảnh tạm dừng',
+        description: error instanceof Error ? error.message : 'Vui lòng thử lại để lưu hình ảnh.',
         variant: 'destructive',
       });
       return null;
@@ -193,8 +193,8 @@ export function ImageGenerator() {
     } catch (error) {
       console.error('Error deleting image:', error);
       toast({
-        title: 'Lỗi xóa hình ảnh',
-        description: 'Không thể xóa hình ảnh',
+        title: 'Thao tác tạm dừng',
+        description: 'Vui lòng thử lại để hoàn tất.',
         variant: 'destructive',
       });
     }
@@ -203,8 +203,8 @@ export function ImageGenerator() {
   const handleGenerate = async () => {
     if (!prompt.trim()) {
       toast({
-        title: 'Vui lòng nhập mô tả',
-        description: 'Hãy mô tả hình ảnh bạn muốn tạo',
+        title: 'Cần hoàn thiện mô tả',
+        description: 'Hãy mô tả hình ảnh bạn muốn tạo để bắt đầu.',
         variant: 'destructive',
       });
       return;
@@ -246,8 +246,8 @@ export function ImageGenerator() {
     } catch (error) {
       console.error('Image generation error:', error);
       toast({
-        title: 'Lỗi tạo hình ảnh',
-        description: error instanceof Error ? error.message : 'Vui lòng thử lại',
+        title: 'Tạo hình ảnh cần xử lý',
+        description: error instanceof Error ? error.message : 'Vui lòng thử lại sau giây lát.',
         variant: 'destructive',
       });
     } finally {
@@ -265,8 +265,8 @@ export function ImageGenerator() {
       document.body.removeChild(link);
     } catch (error) {
       toast({
-        title: 'Lỗi tải xuống',
-        description: 'Không thể tải hình ảnh',
+        title: 'Tải xuống tạm dừng',
+        description: 'Vui lòng thử lại để tải hình ảnh.',
         variant: 'destructive',
       });
     }

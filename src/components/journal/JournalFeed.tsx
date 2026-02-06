@@ -67,8 +67,8 @@ export function JournalFeed() {
     } catch (error) {
       console.error('Error loading posts:', error);
       toast({
-        title: 'Lỗi',
-        description: 'Không thể tải bài viết',
+        title: 'Dữ liệu đang cập nhật',
+        description: 'Bài viết đang được tải lại. Vui lòng làm mới trang.',
         variant: 'destructive',
       });
     } finally {
@@ -112,8 +112,8 @@ export function JournalFeed() {
     } catch (error) {
       console.error('Error deleting post:', error);
       toast({
-        title: 'Lỗi',
-        description: 'Không thể xóa bài viết',
+        title: 'Hành động tạm dừng',
+        description: 'Thao tác cần xử lý. Vui lòng thử lại sau.',
         variant: 'destructive',
       });
     }
