@@ -31,8 +31,8 @@ export default function Developers() {
     
     if (!name.trim() || !email.trim()) {
       toast({
-        title: "Thiếu thông tin",
-        description: "Vui lòng nhập tên và email",
+        title: "Cần hoàn thiện thông tin",
+        description: "Vui lòng nhập tên và email để tiếp tục đăng ký.",
         variant: "destructive",
       });
       return;
@@ -62,8 +62,8 @@ export default function Developers() {
     } catch (error) {
       console.error('Registration error:', error);
       toast({
-        title: "Lỗi đăng ký",
-        description: error instanceof Error ? error.message : "Vui lòng thử lại",
+        title: "Đăng ký cần hoàn thiện",
+        description: error instanceof Error ? error.message : "Vui lòng thử lại sau giây lát.",
         variant: "destructive",
       });
     } finally {
@@ -349,19 +349,19 @@ data: [DONE]`}
                   </div>
                   <div className="flex gap-4 items-center p-2 rounded bg-muted/30">
                     <span className="px-2 py-1 bg-red-500/20 text-red-600 rounded text-sm font-mono min-w-[50px] text-center">401</span>
-                    <span className="text-sm">Unauthorized - API key không hợp lệ hoặc thiếu</span>
+                     <span className="text-sm">Cần xác minh - API key chưa hợp lệ hoặc cần bổ sung</span>
                   </div>
                   <div className="flex gap-4 items-center p-2 rounded bg-muted/30">
-                    <span className="px-2 py-1 bg-red-500/20 text-red-600 rounded text-sm font-mono min-w-[50px] text-center">403</span>
-                    <span className="text-sm">Forbidden - API key bị vô hiệu hóa</span>
+                     <span className="px-2 py-1 bg-red-500/20 text-red-600 rounded text-sm font-mono min-w-[50px] text-center">403</span>
+                     <span className="text-sm">Tạm dừng - API key đã được tạm ngưng</span>
                   </div>
                   <div className="flex gap-4 items-center p-2 rounded bg-muted/30">
-                    <span className="px-2 py-1 bg-orange-500/20 text-orange-600 rounded text-sm font-mono min-w-[50px] text-center">429</span>
-                    <span className="text-sm">Too Many Requests - Vượt quá rate limit</span>
+                     <span className="px-2 py-1 bg-orange-500/20 text-orange-600 rounded text-sm font-mono min-w-[50px] text-center">429</span>
+                     <span className="text-sm">Cần chờ - Đã đạt giới hạn requests trong ngày</span>
                   </div>
                   <div className="flex gap-4 items-center p-2 rounded bg-muted/30">
-                    <span className="px-2 py-1 bg-red-500/20 text-red-600 rounded text-sm font-mono min-w-[50px] text-center">500</span>
-                    <span className="text-sm">Server Error - Lỗi server</span>
+                     <span className="px-2 py-1 bg-red-500/20 text-red-600 rounded text-sm font-mono min-w-[50px] text-center">500</span>
+                     <span className="text-sm">Cần xử lý - Hệ thống đang tạm gián đoạn</span>
                   </div>
                 </div>
               </Card>

@@ -108,8 +108,8 @@ export function PostComposer({ onPostCreated }: PostComposerProps) {
     } catch (error) {
       console.error('Error creating post:', error);
       toast({
-        title: 'Lỗi',
-        description: 'Không thể tạo bài viết. Vui lòng thử lại.',
+        title: 'Cần xử lý',
+        description: 'Bài viết cần được xác minh. Vui lòng thử lại.',
         variant: 'destructive',
       });
     } finally {

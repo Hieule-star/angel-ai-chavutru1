@@ -52,8 +52,8 @@ export default function Onboarding() {
 
     if (error) {
       toast({
-        title: 'Lỗi',
-        description: 'Không thể lưu thông tin. Vui lòng thử lại.',
+        title: 'Cần xác minh',
+        description: 'Thông tin cần được xác minh để tiếp tục. Vui lòng thử lại.',
         variant: 'destructive',
       });
       setIsLoading(false);

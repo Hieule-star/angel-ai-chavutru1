@@ -151,7 +151,7 @@ export function VideoUploader() {
     const error = validateFile(file);
     if (error) {
       toast({
-        title: 'Lỗi',
+        title: 'Cần kiểm tra',
         description: error,
         variant: 'destructive',
       });
@@ -229,7 +229,7 @@ export function VideoUploader() {
     if (!videoPreview || !user) {
       toast({
         title: 'Cần đăng nhập',
-        description: 'Vui lòng đăng nhập để upload video',
+        description: 'Vui lòng đăng nhập để upload video.',
         variant: 'destructive',
       });
       return;
@@ -394,7 +394,7 @@ export function VideoUploader() {
                       <span className="text-muted-foreground">
                         {uploadStatus === 'uploading' && `Đang upload... ${formatFileSize(progress.loaded)} / ${formatFileSize(progress.total)}`}
                         {uploadStatus === 'success' && 'Upload thành công!'}
-                        {uploadStatus === 'error' && (uploadError || 'Upload thất bại')}
+                        {uploadStatus === 'error' && (uploadError || 'Upload tạm dừng vì an toàn. Vui lòng thử lại.')}
                       </span>
                       <span className={cn(
                         "font-medium",

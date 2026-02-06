@@ -100,8 +100,8 @@ export default function KnowledgeList() {
       setDeleteTopic(null);
     } catch (err: any) {
       toast({
-        title: 'Lỗi xóa topic',
-        description: err.message,
+        title: 'Thao tác tạm dừng',
+        description: 'Vui lòng thử lại để hoàn tất.',
         variant: 'destructive',
       });
     } finally {
@@ -133,8 +133,8 @@ export default function KnowledgeList() {
       setEditTopic(null);
     } catch (err: any) {
       toast({
-        title: 'Lỗi cập nhật topic',
-        description: err.message,
+        title: 'Cập nhật tạm dừng',
+        description: 'Vui lòng thử lại để lưu thay đổi.',
         variant: 'destructive',
       });
     } finally {
