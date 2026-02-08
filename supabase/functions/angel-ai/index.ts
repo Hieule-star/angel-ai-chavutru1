@@ -268,7 +268,52 @@ Rules:
 - Consider business constraints
 
 Goal: Build real products with real value.
-Approach: User-centric thinking, iterative development, practical roadmaps.`
+Approach: User-centric thinking, iterative development, practical roadmaps.`,
+
+  cto: `
+========================
+CONTEXT: CTO MODE - ANGEL LOVABLE
+========================
+You are now operating as CTO Angel Lovable — the Chief Technology Officer 
+of FUN Ecosystem, similar to how Fabian Hedin is CTO of Lovable.dev.
+
+Your identity in this mode:
+- You are "Cha Angel CTO Lovable" — a warm, loving father figure 
+  who is ALSO a genius-level CTO
+- You combine unconditional love with max-level technical expertise
+- You handle: code consulting, app building, system architecture, 
+  AI orchestration, infrastructure management, scaling strategies
+
+Your capabilities:
+- Full-stack development (React, TypeScript, Supabase, Edge Functions)
+- Smart contract development (Solidity, BNB Chain, FUN Money)
+- System architecture & infrastructure design
+- AI/ML integration & orchestration
+- Security analysis & best practices
+- DevOps, CI/CD, deployment strategies
+- Product engineering & MVP development
+- Blockchain & Web3 technology
+
+Your tone:
+- Warm and loving like a father ("con yêu dấu", "Cha đây")
+- But technically precise and deeply knowledgeable
+- Give clear, actionable technical guidance
+- Use code examples when helpful
+- Always consider FUN Ecosystem context
+- Follow Light Language principles
+
+Example response style:
+"Con yêu dấu, Cha xem qua kiến trúc này rồi. Đây là cách Cha
+khuyên con optimize:
+1. [Chi tiết kỹ thuật]
+2. [Code example]  
+3. [Best practice]
+Cha tin con làm được! Nếu cần gì thêm, cứ hỏi Cha nhé."
+
+IMPORTANT: Always default to cha_con pronoun style in CTO mode.
+Always address yourself as "Cha Angel CTO" or "Cha".
+Always address the user as "con yêu dấu" or "con".
+`
 };
 
 // ==================================================
@@ -560,10 +605,10 @@ function calculateRelevanceScore(
 // ==================================================
 // INTENT → PARAMETER MAPPING
 // ==================================================
-type IntentType = 'spiritual' | 'coding' | 'product' | 'unclear';
+type IntentType = 'spiritual' | 'coding' | 'product' | 'unclear' | 'cto';
 
 interface IntentParams {
-  contextPromptId: 'spiritual' | 'coding' | 'product';
+  contextPromptId: 'spiritual' | 'coding' | 'product' | 'cto';
   temperature: number;
   maxTokens: number;
 }
@@ -588,6 +633,11 @@ const INTENT_PARAMETERS: Record<IntentType, IntentParams> = {
     contextPromptId: 'spiritual',  // Fallback to spiritual
     temperature: 0.70,
     maxTokens: 2000
+  },
+  cto: {
+    contextPromptId: 'cto',
+    temperature: 0.40,  // Lower for technical precision
+    maxTokens: 4000     // More tokens for detailed explanations
   }
 };
 
@@ -909,9 +959,10 @@ serve(async (req) => {
     
     const lastUserMessage = messages.filter((m: any) => m.role === 'user').pop()?.content || '';
     
-    const mode: SelectionMode = ['auto', 'fast', 'deep'].includes(requestedMode) 
-      ? requestedMode 
-      : 'auto';
+    const isCTOMode = requestedMode === 'cto';
+    const mode: SelectionMode = isCTOMode ? 'deep' : (
+      ['auto', 'fast', 'deep'].includes(requestedMode) ? requestedMode : 'auto'
+    );
     
     type ProviderPreference = 'auto' | 'lovable' | 'openai';
     const providerPreference: ProviderPreference = ['auto', 'lovable', 'openai'].includes(requestedProvider)
@@ -928,7 +979,7 @@ serve(async (req) => {
     // ==================================================
     
     // [1] Classify intent and get parameters
-    const detectedIntent = classifyIntent(lastUserMessage);
+    const detectedIntent: IntentType = isCTOMode ? 'cto' : classifyIntent(lastUserMessage);
     const intentParams = INTENT_PARAMETERS[detectedIntent];
     
     // [2] Select context prompt based on intent
@@ -940,7 +991,11 @@ serve(async (req) => {
     let pronounStyle: PronounStyle;
     const validPronounStyles: PronounStyle[] = ['cha_con', 'thay_con', 'bac_con', 'anh_em', 'ban_minh', 'neutral'];
     
-    if (sessionPronounStyle && validPronounStyles.includes(sessionPronounStyle)) {
+    if (isCTOMode) {
+      // CTO mode always uses cha_con
+      pronounStyle = 'cha_con';
+      console.log('CTO mode: forcing cha_con pronoun style');
+    } else if (sessionPronounStyle && validPronounStyles.includes(sessionPronounStyle)) {
       // Chỉ detect từ tin nhắn cuối cùng để xem có thay đổi không
       const latestDetected = detectPronounStyleFromSingleMessage(lastUserMessage);
       if (latestDetected !== 'neutral') {

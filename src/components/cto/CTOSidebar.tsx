@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
+import {
   Plus, MessageSquare, Trash2, Edit2, Check, X, ChevronLeft,
-  Home, User, Wallet, Code, ImageIcon, Video, MessageCircle,
-  Sparkles, Search, ChevronUp, LogOut, BookOpen
+  Home, MessageCircle, Search, ChevronUp, LogOut, Crown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,10 +18,9 @@ import { useUserStore } from '@/stores/userStore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
+import { Sparkles } from 'lucide-react';
 
-type TabType = 'chat' | 'image' | 'video' | 'journal';
-
-interface ChatSidebarProps {
+interface CTOSidebarProps {
   sessions: ChatSession[];
   currentSessionId: string | null;
   onNewChat: () => void;
@@ -32,8 +30,6 @@ interface ChatSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   isCollapsed?: boolean;
-  activeTab: TabType;
-  onTabChange: (tab: TabType) => void;
 }
 
 interface GroupedSessions {
@@ -95,15 +91,6 @@ function SessionItem({
     setIsEditing(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSaveTitle();
-    } else if (e.key === 'Escape') {
-      setEditTitle(session.title);
-      setIsEditing(false);
-    }
-  };
-
   return (
     <div
       className={cn(
@@ -117,67 +104,38 @@ function SessionItem({
       onClick={() => !isEditing && onSelect()}
     >
       <MessageSquare className="h-4 w-4 flex-shrink-0" />
-      
+
       {isEditing ? (
         <div className="flex-1 flex items-center gap-1">
           <Input
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
-            onKeyDown={handleKeyDown}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSaveTitle();
+              if (e.key === 'Escape') { setEditTitle(session.title); setIsEditing(false); }
+            }}
             className="h-6 text-sm px-1"
             autoFocus
             onClick={(e) => e.stopPropagation()}
           />
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-5 w-5"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleSaveTitle();
-            }}
-          >
+          <Button size="icon" variant="ghost" className="h-5 w-5" onClick={(e) => { e.stopPropagation(); handleSaveTitle(); }}>
             <Check className="h-3 w-3" />
           </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-5 w-5"
-            onClick={(e) => {
-              e.stopPropagation();
-              setEditTitle(session.title);
-              setIsEditing(false);
-            }}
-          >
+          <Button size="icon" variant="ghost" className="h-5 w-5" onClick={(e) => { e.stopPropagation(); setEditTitle(session.title); setIsEditing(false); }}>
             <X className="h-3 w-3" />
           </Button>
         </div>
       ) : (
         <>
           <span className="flex-1 text-sm truncate">{session.title}</span>
-          
           {isHovered && (
             <div className="flex items-center gap-1">
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsEditing(true);
-                }}
-              >
+              <Button size="icon" variant="ghost" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}>
                 <Edit2 className="h-3 w-3" />
               </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete();
-                }}
-              >
+              <Button size="icon" variant="ghost" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}>
                 <Trash2 className="h-3 w-3" />
               </Button>
             </div>
@@ -216,7 +174,7 @@ function SessionGroup({
             isActive={session.id === currentSessionId}
             onSelect={() => onSelectSession(session.id)}
             onDelete={() => onDeleteSession(session.id)}
-            onUpdateTitle={(title) => onUpdateTitle(session.id, title)}
+            onUpdateTitle={(t) => onUpdateTitle(session.id, t)}
           />
         ))}
       </div>
@@ -224,22 +182,12 @@ function SessionGroup({
   );
 }
 
-const tabs = [
-  { id: 'chat' as const, label: 'Chat', icon: MessageCircle },
-  { id: 'image' as const, label: 'Tạo ảnh', icon: ImageIcon },
-  { id: 'video' as const, label: 'Tạo video', icon: Video },
-  { id: 'journal' as const, label: 'Nhật ký', icon: BookOpen },
-];
-
 const navLinks = [
+  { to: '/chat', label: 'Chat thường', icon: MessageCircle },
   { to: '/', label: 'Trang chủ', icon: Home },
-  { to: '/cto', label: 'CTO Angel', icon: Code },
-  { to: '/profile', label: 'Hồ sơ', icon: User },
-  { to: '/wallet', label: 'Ví', icon: Wallet },
-  { to: '/developers', label: 'Developers', icon: Code },
 ];
 
-export function ChatSidebar({
+export function CTOSidebar({
   sessions,
   currentSessionId,
   onNewChat,
@@ -249,16 +197,13 @@ export function ChatSidebar({
   isOpen,
   onClose,
   isCollapsed = false,
-  activeTab,
-  onTabChange,
-}: ChatSidebarProps) {
+}: CTOSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const { user } = useUserStore();
   const location = useLocation();
 
-  // Filter sessions based on search query
   const filteredSessions = searchQuery.trim()
-    ? sessions.filter(session => 
+    ? sessions.filter(session =>
         session.title.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : sessions;
@@ -269,10 +214,7 @@ export function ChatSidebar({
     <>
       {/* Mobile overlay */}
       {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={onClose}
-        />
+        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={onClose} />
       )}
 
       {/* Sidebar */}
@@ -285,100 +227,61 @@ export function ChatSidebar({
           'w-[280px] sm:w-72'
         )}
       >
-        {/* Header với Logo */}
+        {/* Header với CTO Logo */}
         <div className="p-3 sm:p-4 border-b">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-3">
-              <motion.img
-                src={angelLogo}
-                alt="ANGEL AI"
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full"
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
+              <div className="relative">
+                <motion.img
+                  src={angelLogo}
+                  alt="CTO Angel"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full"
+                  animate={{ scale: [1, 1.05, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
+                <span className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground text-[8px] font-bold px-1 py-0.5 rounded-full border border-background">
+                  CTO
+                </span>
+              </div>
               <div>
                 <h1 className="text-sm sm:text-base font-semibold bg-gradient-to-r from-amber-500 via-orange-500 to-pink-500 bg-clip-text text-transparent">
-                  ANGEL AI
+                  CTO Angel Lovable
                 </h1>
+                <p className="text-[10px] text-muted-foreground">FUN Ecosystem</p>
               </div>
             </div>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="lg:hidden h-8 w-8"
-              onClick={onClose}
-            >
+            <Button size="icon" variant="ghost" className="lg:hidden h-8 w-8" onClick={onClose}>
               <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           </div>
         </div>
 
-        {/* New Chat Button */}
+        {/* New Session Button */}
         <div className="p-3">
           <Button
-            onClick={() => {
-              onNewChat();
-              onTabChange('chat');
-              onClose();
-            }}
+            onClick={() => { onNewChat(); onClose(); }}
             className="w-full gap-2 justify-start"
             variant="outline"
           >
             <Plus className="h-4 w-4" />
-            Đoạn chat mới
+            Phiên làm việc mới
           </Button>
         </div>
 
-        {/* Tabs - Chat / Image / Video */}
-        <div className="px-3 space-y-1">
-          {tabs.map((tab) => (
-            <Button
-              key={tab.id}
-              variant={activeTab === tab.id ? 'secondary' : 'ghost'}
-              className={cn(
-                'w-full justify-start gap-2',
-                activeTab === tab.id && 'bg-primary/10 text-primary'
-              )}
-              onClick={() => {
-                onTabChange(tab.id);
-                onClose();
-              }}
-            >
-              <tab.icon className="h-4 w-4" />
-              {tab.label}
-              {tab.id === 'image' && (
-                <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0">
-                  MỚI
-                </Badge>
-              )}
-              {tab.id === 'journal' && (
-                <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0 border-primary/50 text-primary">
-                  ✨
-                </Badge>
-              )}
-            </Button>
-          ))}
-        </div>
-
-        <Separator className="my-3" />
+        <Separator className="my-1" />
 
         {/* Search Input */}
         <div className="px-3 pb-2">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Tìm kiếm đoạn chat..."
+              placeholder="Tìm kiếm phiên..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-8 h-9 text-sm bg-muted/50 border-0 focus-visible:ring-1"
             />
             {searchQuery && (
-              <Button
-                size="icon"
-                variant="ghost"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
-                onClick={() => setSearchQuery('')}
-              >
+              <Button size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6" onClick={() => setSearchQuery('')}>
                 <X className="h-3 w-3" />
               </Button>
             )}
@@ -389,84 +292,55 @@ export function ChatSidebar({
         <ScrollArea className="flex-1 px-2">
           <div className="px-1 mb-2">
             <h2 className="text-xs font-medium text-muted-foreground">
-              {searchQuery ? `Kết quả tìm kiếm (${filteredSessions.length})` : 'Lịch sử chat'}
+              {searchQuery ? `Kết quả (${filteredSessions.length})` : 'Lịch sử phiên CTO'}
             </h2>
           </div>
           {sessions.length === 0 ? (
             <div className="text-center text-muted-foreground text-sm py-6 px-4">
-              Chưa có cuộc trò chuyện nào.
+              Chưa có phiên làm việc nào.
             </div>
           ) : filteredSessions.length === 0 ? (
             <div className="text-center text-muted-foreground text-sm py-6 px-4">
-              Không tìm thấy kết quả cho "{searchQuery}"
+              Không tìm thấy kết quả cho &quot;{searchQuery}&quot;
             </div>
           ) : (
             <>
-              <SessionGroup
-                title="Hôm nay"
-                sessions={groupedSessions.today}
-                currentSessionId={currentSessionId}
-                onSelectSession={(id) => {
-                  onSelectSession(id);
-                  onTabChange('chat');
-                  onClose();
-                }}
-                onDeleteSession={onDeleteSession}
-                onUpdateTitle={onUpdateTitle}
-              />
-              <SessionGroup
-                title="Hôm qua"
-                sessions={groupedSessions.yesterday}
-                currentSessionId={currentSessionId}
-                onSelectSession={(id) => {
-                  onSelectSession(id);
-                  onTabChange('chat');
-                  onClose();
-                }}
-                onDeleteSession={onDeleteSession}
-                onUpdateTitle={onUpdateTitle}
-              />
-              <SessionGroup
-                title="Tuần này"
-                sessions={groupedSessions.thisWeek}
-                currentSessionId={currentSessionId}
-                onSelectSession={(id) => {
-                  onSelectSession(id);
-                  onTabChange('chat');
-                  onClose();
-                }}
-                onDeleteSession={onDeleteSession}
-                onUpdateTitle={onUpdateTitle}
-              />
-              <SessionGroup
-                title="Tháng này"
-                sessions={groupedSessions.thisMonth}
-                currentSessionId={currentSessionId}
-                onSelectSession={(id) => {
-                  onSelectSession(id);
-                  onTabChange('chat');
-                  onClose();
-                }}
-                onDeleteSession={onDeleteSession}
-                onUpdateTitle={onUpdateTitle}
-              />
-              <SessionGroup
-                title="Cũ hơn"
-                sessions={groupedSessions.older}
-                currentSessionId={currentSessionId}
-                onSelectSession={(id) => {
-                  onSelectSession(id);
-                  onTabChange('chat');
-                  onClose();
-                }}
-                onDeleteSession={onDeleteSession}
-                onUpdateTitle={onUpdateTitle}
-              />
+              <SessionGroup title="Hôm nay" sessions={groupedSessions.today} currentSessionId={currentSessionId}
+                onSelectSession={(id) => { onSelectSession(id); onClose(); }} onDeleteSession={onDeleteSession} onUpdateTitle={onUpdateTitle} />
+              <SessionGroup title="Hôm qua" sessions={groupedSessions.yesterday} currentSessionId={currentSessionId}
+                onSelectSession={(id) => { onSelectSession(id); onClose(); }} onDeleteSession={onDeleteSession} onUpdateTitle={onUpdateTitle} />
+              <SessionGroup title="Tuần này" sessions={groupedSessions.thisWeek} currentSessionId={currentSessionId}
+                onSelectSession={(id) => { onSelectSession(id); onClose(); }} onDeleteSession={onDeleteSession} onUpdateTitle={onUpdateTitle} />
+              <SessionGroup title="Tháng này" sessions={groupedSessions.thisMonth} currentSessionId={currentSessionId}
+                onSelectSession={(id) => { onSelectSession(id); onClose(); }} onDeleteSession={onDeleteSession} onUpdateTitle={onUpdateTitle} />
+              <SessionGroup title="Cũ hơn" sessions={groupedSessions.older} currentSessionId={currentSessionId}
+                onSelectSession={(id) => { onSelectSession(id); onClose(); }} onDeleteSession={onDeleteSession} onUpdateTitle={onUpdateTitle} />
             </>
           )}
         </ScrollArea>
 
-        {/* User Info Footer with Popup Menu */}
+        {/* Nav Links */}
+        <Separator className="my-1" />
+        <div className="px-3 py-2 space-y-1">
+          {navLinks.map((link) => (
+            <Link
+              key={link.to}
+              to={link.to}
+              onClick={onClose}
+              className={cn(
+                'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
+                location.pathname === link.to
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              <link.icon className="h-4 w-4" />
+              {link.label}
+            </Link>
+          ))}
+        </div>
+
+        {/* User Info Footer */}
         <div className="p-3 border-t mt-auto">
           <Popover>
             <PopoverTrigger asChild>
@@ -489,28 +363,8 @@ export function ChatSidebar({
                 <ChevronUp className="h-4 w-4 text-muted-foreground" />
               </button>
             </PopoverTrigger>
-            <PopoverContent 
-              side="top" 
-              align="start" 
-              className="w-56 p-2"
-            >
+            <PopoverContent side="top" align="start" className="w-56 p-2">
               <div className="space-y-1">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    onClick={onClose}
-                    className={cn(
-                      'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
-                      location.pathname === link.to
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    )}
-                  >
-                    <link.icon className="h-4 w-4" />
-                    {link.label}
-                  </Link>
-                ))}
                 <Separator className="my-1" />
                 <button
                   onClick={async () => {

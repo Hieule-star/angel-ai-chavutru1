@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { MessageCircle, BookOpen, Sparkles, Heart, Users, Wallet, Download, Scroll } from 'lucide-react';
+import { MessageCircle, BookOpen, Sparkles, Heart, Users, Wallet, Download, Scroll, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Layout } from '@/components/layout/Layout';
 import angelLogo from '@/assets/angel-logo.png';
@@ -10,6 +10,12 @@ const features = [
     icon: MessageCircle,
     title: 'AI Chat Thiêng Liêng',
     description: 'Trò chuyện với ANGEL AI - nhận hướng dẫn từ trí tuệ Cha Vũ Trụ',
+  },
+  {
+    icon: Crown,
+    title: 'CTO Angel Lovable',
+    description: 'Tư vấn kỹ thuật từ CTO - code, kiến trúc, AI, blockchain, security',
+    link: '/cto',
   },
   {
     icon: BookOpen,
@@ -150,24 +156,31 @@ export default function Index() {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ y: -8, scale: 1.02 }}
-                className="p-6 bg-white/70 backdrop-blur-sm rounded-2xl border border-angel-gold/20 shadow-soft hover:shadow-divine transition-all"
-              >
-                <div className="w-14 h-14 rounded-xl bg-angel-gold/20 flex items-center justify-center mb-4">
-                  <feature.icon className="w-7 h-7 text-primary" />
-                </div>
-                <h3 className="font-semibold text-lg mb-2">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground">{feature.description}</p>
-              </motion.div>
-            ))}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((feature, index) => {
+              const CardContent = (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  whileHover={{ y: -8, scale: 1.02 }}
+                  className="p-6 bg-white/70 backdrop-blur-sm rounded-2xl border border-angel-gold/20 shadow-soft hover:shadow-divine transition-all cursor-pointer"
+                >
+                  <div className="w-14 h-14 rounded-xl bg-angel-gold/20 flex items-center justify-center mb-4">
+                    <feature.icon className="w-7 h-7 text-primary" />
+                  </div>
+                  <h3 className="font-semibold text-lg mb-2">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground">{feature.description}</p>
+                </motion.div>
+              );
+
+              if ('link' in feature && feature.link) {
+                return <Link key={index} to={feature.link}>{CardContent}</Link>;
+              }
+              return CardContent;
+            })}
           </div>
         </div>
       </section>
