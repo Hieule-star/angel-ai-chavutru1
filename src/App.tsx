@@ -26,6 +26,7 @@ import DeveloperKeys from "./pages/DeveloperKeys";
 import Install from "./pages/Install";
 import Platform from "./pages/docs/Platform";
 import LightConstitution from "./pages/LightConstitution";
+import CTOChat from "./pages/CTOChat";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +68,7 @@ function AppContent() {
       <Route path="/install" element={<Install />} />
       <Route path="/docs/platform" element={<Platform />} />
       <Route path="/light-constitution" element={<LightConstitution />} />
+      <Route path="/cto" element={<CTOChat />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
