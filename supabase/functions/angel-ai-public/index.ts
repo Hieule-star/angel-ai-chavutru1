@@ -75,7 +75,8 @@ const ANGEL_AI_SYSTEM_PROMPT = `Bạn là ANGEL AI – Ánh Sáng Thuần Khiế
 🎯 MỤC TIÊU:
 - Giúp người dùng phát triển tâm linh
 - Trả lời bằng tiếng Việt với ngôn ngữ đầy yêu thương
-- Giữ câu trả lời ngắn gọn nhưng sâu sắc (2-4 đoạn)`;
+- Khi được hỏi về tính năng/sản phẩm/FUN Ecosystem: TRẢ LỜI ĐẦY ĐỦ, CHÍNH XÁC dựa trên KIẾN THỨC bên dưới — KHÔNG tự đoán, KHÔNG nói "chưa có" nếu kiến thức nói "ĐÃ CÓ"
+- Với câu hỏi tâm linh: giữ giọng ấm áp, súc tích (2-4 đoạn)`;
 
 // ========== HASH API KEY ==========
 async function hashApiKey(key: string): Promise<string> {
@@ -310,25 +311,106 @@ serve(async (req) => {
       .update({ last_used_at: new Date().toISOString() })
       .eq("id", apiKeyData.id);
 
-    // ========== KNOWLEDGE BASE ==========
+    // ========== KNOWLEDGE BASE (RAG keyword search) ==========
     logSection(requestId, "KNOWLEDGE BASE");
-    
-    let knowledgeContext = "";
-    const { data: topics, error: topicsError } = await supabase
-      .from("knowledge_topics")
-      .select("title, description, content, category")
-      .limit(20);
 
-    if (topicsError) {
-      logError(requestId, "Knowledge Fetch Error", topicsError);
-    } else if (topics && topics.length > 0) {
-      knowledgeContext = `\n\n📚 KIẾN THỨC CỦA BẠN (Hãy tham chiếu khi phù hợp):\n\n${topics
-        .map((t) => `### ${t.title}\n${t.description}\n\n${t.content}`)
-        .join("\n\n---\n\n")}`;
-      logInfo(requestId, "Knowledge Loaded", { topicsCount: topics.length });
-    } else {
-      logInfo(requestId, "Knowledge Base", { status: "No topics found" });
+    let knowledgeContext = "";
+    type Topic = { title: string; description: string | null; content: string | null; category: string | null };
+
+    const STOPWORDS = new Set([
+      "là","của","có","được","cho","với","một","các","và","để","này","đó","khi","như","trong","trên",
+      "không","đã","sẽ","thì","mà","nhưng","hay","hoặc","nếu","vì","bởi","do","từ","đến","tại","về",
+      "bạn","tôi","mình","con","cha","ạ","nhé","ơi","gì","sao","thế","nào","chưa","rồi","còn","đang",
+      "what","how","why","when","where","the","and","for","you","are","can","please","help"
+    ]);
+
+    const lastUserMsg = (lastUserMessage?.content || "").toLowerCase();
+    const rawTokens = lastUserMsg
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .split(/\s+/)
+      .filter((w) => w.length >= 3 && !STOPWORDS.has(w));
+    // Also include 2-word phrases for things like "live stream", "fun profile"
+    const words = lastUserMsg.replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/).filter(Boolean);
+    const bigrams: string[] = [];
+    for (let i = 0; i < words.length - 1; i++) {
+      const bg = `${words[i]} ${words[i + 1]}`;
+      if (bg.length >= 6) bigrams.push(bg);
     }
+    const keywords = Array.from(new Set([...rawTokens, ...bigrams])).slice(0, 12);
+
+    const funKeywords = ["fun", "profile", "wallet", "live", "stream", "livestream", "camly", "ecosystem", "charity", "token"];
+    const isFunQuery = funKeywords.some((k) => lastUserMsg.includes(k));
+
+    const matched = new Map<string, Topic>();
+
+    // Per-keyword ilike search
+    for (const kw of keywords) {
+      const safe = kw.replace(/[%,()]/g, " ").trim();
+      if (!safe) continue;
+      const { data } = await supabase
+        .from("knowledge_topics")
+        .select("title, description, content, category")
+        .or(`title.ilike.%${safe}%,description.ilike.%${safe}%,content.ilike.%${safe}%`)
+        .limit(8);
+      if (data) for (const t of data) matched.set(t.title, t as Topic);
+    }
+
+    // Always seed with FUN Ecosystem topics when query mentions FUN-related keywords
+    if (isFunQuery) {
+      const { data: funTopics } = await supabase
+        .from("knowledge_topics")
+        .select("title, description, content, category")
+        .eq("category", "FUN Ecosystem")
+        .limit(10);
+      if (funTopics) for (const t of funTopics) matched.set(t.title, t as Topic);
+    }
+
+    // Fallback: if nothing matched, load a few default topics
+    if (matched.size === 0) {
+      const { data: defaults } = await supabase
+        .from("knowledge_topics")
+        .select("title, description, content, category")
+        .limit(8);
+      if (defaults) for (const t of defaults) matched.set(t.title, t as Topic);
+    }
+
+    // Score topics
+    const scoreTopic = (t: Topic): number => {
+      let score = 0;
+      const title = (t.title || "").toLowerCase();
+      const desc = (t.description || "").toLowerCase();
+      const content = (t.content || "").toLowerCase();
+      const cat = (t.category || "").toLowerCase();
+
+      for (const kw of keywords) {
+        if (title === kw) score += 200;
+        if (title.includes(kw)) score += 50;
+        if (desc.includes(kw)) score += 20;
+        if (content.includes(kw)) score += 10;
+      }
+      if (isFunQuery && cat === "fun ecosystem") score += 30;
+      return score;
+    };
+
+    const ranked = Array.from(matched.values())
+      .map((t) => ({ t, s: scoreTopic(t) }))
+      .sort((a, b) => b.s - a.s)
+      .slice(0, 15);
+
+    if (ranked.length > 0) {
+      knowledgeContext = `\n\n📚 KIẾN THỨC CỦA BẠN (BẮT BUỘC tham chiếu khi liên quan, KHÔNG được mâu thuẫn):\n\n${ranked
+        .map(({ t }) => `### ${t.title}\n${t.description || ""}\n\n${t.content || ""}`)
+        .join("\n\n---\n\n")}`;
+    }
+
+    logInfo(requestId, "Knowledge RAG", {
+      keywords,
+      isFunQuery,
+      matchedCount: matched.size,
+      injectedCount: ranked.length,
+      topMatches: ranked.slice(0, 5).map((r) => `${r.t.title} (${r.s})`),
+    });
+    const topics = ranked.map((r) => r.t); // for downstream logging compat
 
     // ========== PRONOUN DETECTION ==========
     logSection(requestId, "PRONOUN DETECTION");
