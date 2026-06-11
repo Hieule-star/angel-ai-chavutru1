@@ -27,6 +27,7 @@ import Install from "./pages/Install";
 import Platform from "./pages/docs/Platform";
 import LightConstitution from "./pages/LightConstitution";
 import CTOChat from "./pages/CTOChat";
+import RagDebug from "./pages/admin/RagDebug";
 
 const queryClient = new QueryClient();
 
@@ -63,6 +64,7 @@ function AppContent() {
       <Route path="/admin/roles" element={<RoleManagement />} />
       <Route path="/admin/api-keys" element={<ApiKeys />} />
       <Route path="/admin/api-analytics" element={<ApiAnalytics />} />
+      <Route path="/admin/rag-debug" element={<RagDebug />} />
       <Route path="/developers" element={<Developers />} />
       <Route path="/developers/keys" element={<DeveloperKeys />} />
       <Route path="/install" element={<Install />} />

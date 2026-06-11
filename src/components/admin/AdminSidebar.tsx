@@ -9,7 +9,8 @@ import {
   ChevronLeft,
   Menu,
   Key,
-  BarChart3
+  BarChart3,
+  Bug
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ const adminNavItems = [
   { title: 'Roles', url: '/admin/roles', icon: Shield },
   { title: 'API Keys', url: '/admin/api-keys', icon: Key },
   { title: 'API Analytics', url: '/admin/api-analytics', icon: BarChart3 },
+  { title: 'RAG Debugger', url: '/admin/rag-debug', icon: Bug },
 ];
 
 export function AdminSidebar() {
