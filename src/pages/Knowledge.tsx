@@ -28,8 +28,8 @@ export default function Knowledge() {
   useEffect(() => {
     if (!adminLoading && !isAdmin) {
       toast({
-        title: "Chỉ dành cho Admin",
-        description: "Trang Knowledge Base chỉ dành cho quản trị viên",
+        title: "Cần quyền truy cập",
+        description: "Trang Knowledge Base cần quyền quản trị viên để truy cập.",
         variant: "destructive",
       });
       navigate('/chat');
@@ -166,8 +166,8 @@ export default function Knowledge() {
           {/* Error State */}
           {error && (
             <div className="text-center py-16">
-              <p className="text-destructive mb-2">Không thể tải dữ liệu</p>
-              <p className="text-muted-foreground text-sm">Vui lòng thử lại sau</p>
+              <p className="text-primary mb-2">Dữ liệu đang được cập nhật</p>
+              <p className="text-muted-foreground text-sm">Vui lòng làm mới trang để thử lại.</p>
             </div>
           )}
 

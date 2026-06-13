@@ -61,8 +61,14 @@ export type Database = {
           error_message: string | null
           id: string
           ip_address: string | null
+          message_count: number | null
+          model_used: string | null
+          origin: string | null
+          pronoun_style: string | null
+          request_id: string | null
           response_time_ms: number | null
           status_code: number | null
+          stream_mode: boolean | null
           tokens_used: number | null
           user_agent: string | null
         }
@@ -73,8 +79,14 @@ export type Database = {
           error_message?: string | null
           id?: string
           ip_address?: string | null
+          message_count?: number | null
+          model_used?: string | null
+          origin?: string | null
+          pronoun_style?: string | null
+          request_id?: string | null
           response_time_ms?: number | null
           status_code?: number | null
+          stream_mode?: boolean | null
           tokens_used?: number | null
           user_agent?: string | null
         }
@@ -85,8 +97,14 @@ export type Database = {
           error_message?: string | null
           id?: string
           ip_address?: string | null
+          message_count?: number | null
+          model_used?: string | null
+          origin?: string | null
+          pronoun_style?: string | null
+          request_id?: string | null
           response_time_ms?: number | null
           status_code?: number | null
+          stream_mode?: boolean | null
           tokens_used?: number | null
           user_agent?: string | null
         }
@@ -220,6 +238,75 @@ export type Database = {
         }
         Relationships: []
       }
+      post_media: {
+        Row: {
+          created_at: string | null
+          id: string
+          media_id: string
+          order_index: number | null
+          post_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          media_id: string
+          order_index?: number | null
+          post_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          media_id?: string
+          order_index?: number | null
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_media_media_id_fkey"
+            columns: ["media_id"]
+            isOneToOne: false
+            referencedRelation: "video_metadata"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_media_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      posts: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string
+          mood: string | null
+          updated_at: string | null
+          user_id: string
+          visibility: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          mood?: string | null
+          updated_at?: string | null
+          user_id: string
+          visibility?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          mood?: string | null
+          updated_at?: string | null
+          user_id?: string
+          visibility?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -228,6 +315,7 @@ export type Database = {
           email: string | null
           id: string
           light_points: number | null
+          onboarding_completed: boolean | null
           updated_at: string | null
         }
         Insert: {
@@ -237,6 +325,7 @@ export type Database = {
           email?: string | null
           id: string
           light_points?: number | null
+          onboarding_completed?: boolean | null
           updated_at?: string | null
         }
         Update: {
@@ -246,6 +335,7 @@ export type Database = {
           email?: string | null
           id?: string
           light_points?: number | null
+          onboarding_completed?: boolean | null
           updated_at?: string | null
         }
         Relationships: []
@@ -265,6 +355,69 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      video_metadata: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_seconds: number | null
+          file_size_bytes: number | null
+          file_type: string
+          height: number | null
+          id: string
+          mime_type: string | null
+          preview_gif_url: string | null
+          r2_key: string | null
+          r2_url: string | null
+          resized_urls: Json | null
+          status: string | null
+          thumbnail_url: string | null
+          title: string | null
+          updated_at: string
+          user_id: string
+          width: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          file_size_bytes?: number | null
+          file_type?: string
+          height?: number | null
+          id?: string
+          mime_type?: string | null
+          preview_gif_url?: string | null
+          r2_key?: string | null
+          r2_url?: string | null
+          resized_urls?: Json | null
+          status?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+          width?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          file_size_bytes?: number | null
+          file_type?: string
+          height?: number | null
+          id?: string
+          mime_type?: string | null
+          preview_gif_url?: string | null
+          r2_key?: string | null
+          r2_url?: string | null
+          resized_urls?: Json | null
+          status?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+          width?: number | null
         }
         Relationships: []
       }

@@ -52,8 +52,8 @@ export default function ApiKeys() {
 
     if (error) {
       toast({
-        title: "Lỗi tải dữ liệu",
-        description: error.message,
+        title: "Dữ liệu đang cập nhật",
+        description: "Vui lòng làm mới trang để thử lại.",
         variant: "destructive",
       });
     } else {
@@ -74,8 +74,8 @@ export default function ApiKeys() {
 
     if (error) {
       toast({
-        title: "Lỗi cập nhật",
-        description: error.message,
+        title: "Cập nhật tạm dừng",
+        description: "Vui lòng thử lại để hoàn tất thao tác.",
         variant: "destructive",
       });
     } else {
@@ -83,7 +83,7 @@ export default function ApiKeys() {
         prev.map(key => key.id === id ? { ...key, is_active: !currentStatus } : key)
       );
       toast({
-        title: currentStatus ? "Đã vô hiệu hóa API key" : "Đã kích hoạt API key",
+        title: currentStatus ? "Đã tạm ngưng API key" : "Đã kích hoạt API key ✨",
       });
     }
   };
@@ -96,15 +96,15 @@ export default function ApiKeys() {
 
     if (error) {
       toast({
-        title: "Lỗi cập nhật",
-        description: error.message,
+        title: "Cập nhật tạm dừng",
+        description: "Vui lòng thử lại để hoàn tất thao tác.",
         variant: "destructive",
       });
     } else {
       setApiKeys(prev => 
         prev.map(key => key.id === id ? { ...key, daily_limit: newLimit } : key)
       );
-      toast({ title: "Đã cập nhật daily limit" });
+      toast({ title: "Đã cập nhật daily limit ✨" });
     }
   };
 
@@ -118,13 +118,13 @@ export default function ApiKeys() {
 
     if (error) {
       toast({
-        title: "Lỗi xóa",
-        description: error.message,
+        title: "Thao tác tạm dừng",
+        description: "Vui lòng thử lại để hoàn tất.",
         variant: "destructive",
       });
     } else {
       setApiKeys(prev => prev.filter(key => key.id !== id));
-      toast({ title: "Đã xóa API key" });
+      toast({ title: "Đã xóa API key ✨" });
     }
   };
 

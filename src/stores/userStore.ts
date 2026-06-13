@@ -39,6 +39,8 @@ export const useUserStore = create<UserState>()(
       wallet: {
         address: null,
         balance: 0,
+        ethBalance: '0',
+        chainId: null,
         connected: false,
       },
       setUser: (user) => set({ user, isAuthenticated: !!user }),
@@ -48,7 +50,7 @@ export const useUserStore = create<UserState>()(
         session: null,
         isAuthenticated: false,
         chatHistory: [],
-        wallet: { address: null, balance: 0, connected: false }
+        wallet: { address: null, balance: 0, ethBalance: '0', chainId: null, connected: false }
       }),
       addChatMessage: (message) =>
         set((state) => ({
@@ -68,7 +70,7 @@ export const useUserStore = create<UserState>()(
         })),
       disconnectWallet: () =>
         set({
-          wallet: { address: null, balance: 0, connected: false },
+          wallet: { address: null, balance: 0, ethBalance: '0', chainId: null, connected: false },
         }),
     }),
     {

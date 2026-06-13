@@ -17,3 +17,15 @@ verify_jwt = false
 
 [functions.generate-chat-title]
 verify_jwt = false
+
+[functions.cloudflare-r2-upload]
+verify_jwt = false
+
+[functions.media-create-upload-url]
+verify_jwt = false
+
+[functions.media-confirm-upload]
+verify_jwt = false
+
+[functions.media-transform]
+verify_jwt = false

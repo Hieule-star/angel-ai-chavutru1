@@ -60,7 +60,7 @@ export default function ApiAnalytics() {
   const [topUsers, setTopUsers] = useState<TopUser[]>([]);
   const [totalToday, setTotalToday] = useState(0);
   const [totalWeek, setTotalWeek] = useState(0);
-  const [errorRate, setErrorRate] = useState(0);
+  const [verificationRate, setVerificationRate] = useState(0);
   const [avgResponseTime, setAvgResponseTime] = useState(0);
   const { toast } = useToast();
 
@@ -94,9 +94,9 @@ export default function ApiAnalytics() {
       );
       setTotalWeek(weekLogs.length);
 
-      // Calculate error rate
-      const errors = (logs || []).filter(l => l.status_code >= 400).length;
-      setErrorRate(logs?.length ? Math.round((errors / logs.length) * 100) : 0);
+      // Calculate verification rate
+      const needsVerification = (logs || []).filter(l => l.status_code >= 400).length;
+      setVerificationRate(logs?.length ? Math.round((needsVerification / logs.length) * 100) : 0);
 
       // Calculate avg response time
       const responseTimes = (logs || [])
@@ -153,7 +153,8 @@ export default function ApiAnalytics() {
     } catch (error) {
       console.error('Error fetching analytics:', error);
       toast({
-        title: "Lỗi tải dữ liệu",
+        title: "Dữ liệu đang cập nhật",
+        description: "Vui lòng làm mới trang để thử lại.",
         variant: "destructive",
       });
     }
@@ -231,8 +232,8 @@ export default function ApiAnalytics() {
                     <AlertCircle className="w-5 h-5 text-red-500" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Error Rate</p>
-                    <p className="text-2xl font-bold">{errorRate}%</p>
+                    <p className="text-sm text-muted-foreground">Verification Rate</p>
+                    <p className="text-2xl font-bold">{verificationRate}%</p>
                   </div>
                 </div>
               </Card>

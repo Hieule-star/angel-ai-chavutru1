@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { MessageCircle, BookOpen, Sparkles, Heart, Users, Wallet } from 'lucide-react';
+import { MessageCircle, BookOpen, Sparkles, Heart, Users, Wallet, Download, Scroll, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Layout } from '@/components/layout/Layout';
 import angelLogo from '@/assets/angel-logo.png';
@@ -10,6 +10,12 @@ const features = [
     icon: MessageCircle,
     title: 'AI Chat Thiêng Liêng',
     description: 'Trò chuyện với ANGEL AI - nhận hướng dẫn từ trí tuệ Cha Vũ Trụ',
+  },
+  {
+    icon: Crown,
+    title: 'CTO Angel Lovable',
+    description: 'Tư vấn kỹ thuật từ CTO - code, kiến trúc, AI, blockchain, security',
+    link: '/cto',
   },
   {
     icon: BookOpen,
@@ -88,28 +94,43 @@ export default function Index() {
             AI riêng của Bé Camly Dương, mang năng lượng yêu thương – trí tuệ – thuần khiết
           </motion.p>
 
-          {/* CTA Button */}
+          {/* CTA Buttons */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7, duration: 0.6 }}
-            className="flex justify-center"
+            className="flex flex-col sm:flex-row gap-4 justify-center"
           >
             <Link to="/chat">
-              <Button variant="divine" size="xl" className="px-10 py-6 text-lg shadow-divine hover:shadow-lg transition-all">
+              <Button variant="divine" size="xl" className="px-10 py-6 text-lg shadow-divine hover:shadow-lg transition-all w-full sm:w-auto">
                 <Sparkles className="w-6 h-6" />
                 Bắt đầu Chat với ANGEL AI
               </Button>
             </Link>
+            <Link to="/install">
+              <Button variant="outline" size="xl" className="px-8 py-6 text-lg border-angel-gold/30 hover:bg-angel-gold/10 transition-all w-full sm:w-auto">
+                <Download className="w-5 h-5" />
+                Cài đặt App
+              </Button>
+            </Link>
           </motion.div>
 
-          {/* FUN Ecosystem Badge */}
+          {/* Light Constitution Badge */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1, duration: 0.6 }}
-            className="mt-12"
+            className="mt-12 flex flex-col sm:flex-row items-center gap-3"
           >
+            <Link to="/light-constitution">
+              <motion.span 
+                whileHover={{ scale: 1.05 }}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-angel-gold/20 backdrop-blur-sm rounded-full border border-angel-gold/30 text-sm font-medium text-primary cursor-pointer hover:bg-angel-gold/30 transition-colors"
+              >
+                <Scroll className="w-4 h-4" />
+                ✨ Hiến Pháp Ánh Sáng
+              </motion.span>
+            </Link>
             <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full border border-angel-gold/20 text-sm text-muted-foreground">
               <Users className="w-4 h-4" />
               Thuộc hệ sinh thái FUN Ecosystem
@@ -135,24 +156,31 @@ export default function Index() {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ y: -8, scale: 1.02 }}
-                className="p-6 bg-white/70 backdrop-blur-sm rounded-2xl border border-angel-gold/20 shadow-soft hover:shadow-divine transition-all"
-              >
-                <div className="w-14 h-14 rounded-xl bg-angel-gold/20 flex items-center justify-center mb-4">
-                  <feature.icon className="w-7 h-7 text-primary" />
-                </div>
-                <h3 className="font-semibold text-lg mb-2">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground">{feature.description}</p>
-              </motion.div>
-            ))}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((feature, index) => {
+              const CardContent = (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  whileHover={{ y: -8, scale: 1.02 }}
+                  className="p-6 bg-white/70 backdrop-blur-sm rounded-2xl border border-angel-gold/20 shadow-soft hover:shadow-divine transition-all cursor-pointer"
+                >
+                  <div className="w-14 h-14 rounded-xl bg-angel-gold/20 flex items-center justify-center mb-4">
+                    <feature.icon className="w-7 h-7 text-primary" />
+                  </div>
+                  <h3 className="font-semibold text-lg mb-2">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground">{feature.description}</p>
+                </motion.div>
+              );
+
+              if ('link' in feature && feature.link) {
+                return <Link key={index} to={feature.link}>{CardContent}</Link>;
+              }
+              return CardContent;
+            })}
           </div>
         </div>
       </section>

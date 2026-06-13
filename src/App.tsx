@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import Wallet from "./pages/Wallet";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Onboarding from "./pages/Onboarding";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import KnowledgeUpload from "./pages/admin/KnowledgeUpload";
 import UserManagement from "./pages/admin/UserManagement";
@@ -22,6 +23,11 @@ import ApiKeys from "./pages/admin/ApiKeys";
 import ApiAnalytics from "./pages/admin/ApiAnalytics";
 import Developers from "./pages/Developers";
 import DeveloperKeys from "./pages/DeveloperKeys";
+import Install from "./pages/Install";
+import Platform from "./pages/docs/Platform";
+import LightConstitution from "./pages/LightConstitution";
+import CTOChat from "./pages/CTOChat";
+import RagDebug from "./pages/admin/RagDebug";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +52,7 @@ function AppContent() {
       <Route path="/knowledge" element={<Knowledge />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/onboarding" element={<Onboarding />} />
       <Route path="/wallet" element={<Wallet />} />
       <Route path="/settings" element={<Settings />} />
       {/* Admin Routes */}
@@ -57,8 +64,13 @@ function AppContent() {
       <Route path="/admin/roles" element={<RoleManagement />} />
       <Route path="/admin/api-keys" element={<ApiKeys />} />
       <Route path="/admin/api-analytics" element={<ApiAnalytics />} />
+      <Route path="/admin/rag-debug" element={<RagDebug />} />
       <Route path="/developers" element={<Developers />} />
       <Route path="/developers/keys" element={<DeveloperKeys />} />
+      <Route path="/install" element={<Install />} />
+      <Route path="/docs/platform" element={<Platform />} />
+      <Route path="/light-constitution" element={<LightConstitution />} />
+      <Route path="/cto" element={<CTOChat />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

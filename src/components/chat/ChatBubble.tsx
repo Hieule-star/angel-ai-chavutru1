@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, Sparkles, Brain, BookOpen, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { Zap, Sparkles, Brain, BookOpen, ChevronDown, ChevronUp, ExternalLink, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { ChatMessage, AIModel } from '@/types';
+import type { ChatMessage, AIModel, AIProvider } from '@/types';
 import angelLogo from '@/assets/angel-logo.png';
 
 interface ChatBubbleProps {
@@ -24,10 +24,18 @@ const getModelBadge = (model?: AIModel) => {
   }
 };
 
+const getProviderBadge = (provider?: AIProvider) => {
+  if (provider === 'openai') {
+    return { icon: <RefreshCw className="w-3 h-3" />, name: 'OpenAI Backup', color: 'text-orange-500 bg-orange-500/10' };
+  }
+  return null; // Default Lovable provider doesn't need badge
+};
+
 export function ChatBubble({ message }: ChatBubbleProps) {
   const [showSources, setShowSources] = useState(false);
   const isUser = message.role === 'user';
   const modelBadge = !isUser ? getModelBadge(message.model) : null;
+  const providerBadge = !isUser ? getProviderBadge(message.provider) : null;
   const hasSources = !isUser && message.sources && message.sources.length > 0;
 
   return (
@@ -35,17 +43,17 @@ export function ChatBubble({ message }: ChatBubbleProps) {
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
-      className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+      className={`flex gap-2 sm:gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
     >
       {/* Avatar */}
-      <div className={`flex-shrink-0 ${isUser ? 'ml-2' : 'mr-2'}`}>
+      <div className={`flex-shrink-0 ${isUser ? 'ml-1 sm:ml-2' : 'mr-1 sm:mr-2'}`}>
         {isUser ? (
-          <div className="w-10 h-10 rounded-full bg-angel-pink flex items-center justify-center">
-            <span className="text-lg">👤</span>
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-angel-pink flex items-center justify-center">
+            <span className="text-sm sm:text-lg">👤</span>
           </div>
         ) : (
           <motion.div
-            className="w-10 h-10 rounded-full overflow-hidden glow-soft"
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden glow-soft"
             animate={{ boxShadow: ['0 0 20px rgba(248, 227, 142, 0.3)', '0 0 30px rgba(248, 227, 142, 0.5)', '0 0 20px rgba(248, 227, 142, 0.3)'] }}
             transition={{ duration: 2, repeat: Infinity }}
           >
@@ -56,24 +64,30 @@ export function ChatBubble({ message }: ChatBubbleProps) {
 
       {/* Message Bubble */}
       <div
-        className={`max-w-[80%] md:max-w-[70%] ${
+        className={`max-w-[85%] sm:max-w-[80%] md:max-w-[70%] ${
           isUser
             ? 'bg-angel-gold/20 border border-angel-gold/30'
             : 'bg-white/80 border border-angel-gold/20 shadow-divine'
-        } rounded-2xl px-4 py-3 backdrop-blur-sm`}
+        } rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2 sm:py-3 backdrop-blur-sm`}
       >
         {!isUser && (
-          <div className="flex items-center gap-2 mb-1">
-            <p className="text-xs text-angel-gold font-medium">ANGEL AI ✨</p>
+          <div className="flex items-center gap-1.5 sm:gap-2 mb-1 flex-wrap">
+            <p className="text-[11px] sm:text-xs text-angel-gold font-medium">ANGEL AI ✨</p>
             {modelBadge && (
-              <span className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-muted/50 ${modelBadge.color}`}>
+              <span className={`flex items-center gap-0.5 sm:gap-1 text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded-full bg-muted/50 ${modelBadge.color}`}>
                 {modelBadge.icon}
-                {modelBadge.name}
+                <span className="hidden xs:inline">{modelBadge.name}</span>
+              </span>
+            )}
+            {providerBadge && (
+              <span className={`hidden sm:flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full ${providerBadge.color}`}>
+                {providerBadge.icon}
+                {providerBadge.name}
               </span>
             )}
           </div>
         )}
-        <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap">
+        <p className="text-sm leading-relaxed whitespace-pre-wrap">
           {message.message}
         </p>
         

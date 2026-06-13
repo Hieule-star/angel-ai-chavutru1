@@ -55,8 +55,8 @@ export default function DeveloperKeys() {
   useEffect(() => {
     if (!isAuthenticated) {
       toast({
-        title: "Yêu cầu đăng nhập",
-        description: "Vui lòng đăng nhập để quản lý API keys",
+        title: "Cần đăng nhập",
+        description: "Vui lòng đăng nhập để truy cập quản lý API keys.",
         variant: "destructive",
       });
       navigate('/login');
@@ -82,8 +82,8 @@ export default function DeveloperKeys() {
     } catch (error) {
       console.error('Error fetching keys:', error);
       toast({
-        title: "Lỗi",
-        description: "Không thể tải danh sách API keys",
+        title: "Dữ liệu đang cập nhật",
+        description: "Danh sách API keys cần được làm mới. Vui lòng thử lại.",
         variant: "destructive",
       });
     } finally {
@@ -120,8 +120,8 @@ export default function DeveloperKeys() {
       fetchKeys();
     } catch (error) {
       toast({
-        title: "Lỗi",
-        description: error instanceof Error ? error.message : "Không thể tạo lại API key",
+        title: "Hành động tạm dừng",
+        description: error instanceof Error ? error.message : "Tạo lại API key cần xác minh. Vui lòng thử lại.",
         variant: "destructive",
       });
     } finally {
@@ -151,8 +151,8 @@ export default function DeveloperKeys() {
       fetchKeys();
     } catch (error) {
       toast({
-        title: "Lỗi",
-        description: error instanceof Error ? error.message : "Không thể vô hiệu hóa API key",
+        title: "Hành động tạm dừng",
+        description: error instanceof Error ? error.message : "Thao tác cần xác minh. Vui lòng thử lại.",
         variant: "destructive",
       });
     } finally {

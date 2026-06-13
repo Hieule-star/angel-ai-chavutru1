@@ -11,6 +11,10 @@ export type AIModel = 'google/gemini-2.5-flash' | 'google/gemini-2.5-pro' | 'ope
 
 export type SelectionMode = 'auto' | 'fast' | 'deep';
 
+export type AIProvider = 'lovable' | 'openai';
+
+export type ProviderPreference = 'auto' | 'lovable' | 'openai';
+
 export interface KnowledgeSource {
   id: string;
   title: string;
@@ -24,6 +28,7 @@ export interface ChatMessage {
   message: string;
   timestamp: string;
   model?: AIModel;
+  provider?: AIProvider;
   sources?: KnowledgeSource[];
   session_id?: string;
 }
@@ -49,5 +54,7 @@ export interface KnowledgeTopic {
 export interface WalletInfo {
   address: string | null;
   balance: number;
+  ethBalance: string;
+  chainId: number | null;
   connected: boolean;
 }
