@@ -7,7 +7,7 @@ Bot Telegram bên FUN.RICH gọi vào endpoint `angel-ai-public` của project A
 File `supabase/functions/angel-ai-public/index.ts` (line 317-320):
 
 ```ts
-const { data: topics } = await supabase
+const { data: topics } = await supabase.
   .from("knowledge_topics")
   .select("title, description, content, category")
   .limit(20);   // ← không order, không filter, không keyword match
