@@ -82,6 +82,13 @@ export default function RagDebug() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const copyPrompt = async () => {
+    if (!result) return;
+    await navigator.clipboard.writeText(result.finalSystemPrompt);
+    setCopiedPrompt(true);
+    setTimeout(() => setCopiedPrompt(false), 2000);
+  };
+
   return (
     <AdminLayout>
       <div className="p-6 md:p-10 max-w-6xl mx-auto">
