@@ -29,6 +29,11 @@ interface RagResult {
   usedInContext: number;
   topTopics: RankedTopic[];
   excludedTopics: RankedTopic[];
+  pronounStyle: string;
+  finalSystemPrompt: string;
+  finalSystemPromptLength: number;
+  finalMessages: Array<{ role: string; content: string }>;
+  model: string;
 }
 
 const SAMPLES = [
