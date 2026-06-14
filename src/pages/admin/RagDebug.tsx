@@ -215,6 +215,43 @@ export default function RagDebug() {
                 </div>
               </Card>
             )}
+
+            {/* Final prompt sent to model */}
+            <Card className="p-6 mb-6">
+              <div className="flex items-start justify-between mb-2 gap-3 flex-wrap">
+                <div>
+                  <h2 className="text-lg font-semibold">Prompt cuối cùng gửi tới model</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Đây là <code className="px-1 bg-muted rounded">system</code> message thực tế model sẽ nhận
+                    (ANGEL_AI base + xưng hô <Badge variant="outline" className="text-[10px] px-1.5 py-0 mx-1">{result.pronounStyle}</Badge>
+                    + knowledge từ top {result.usedInContext} topics).
+                  </p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={copyPrompt} className="gap-2 shrink-0">
+                  {copiedPrompt ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                  Copy prompt
+                </Button>
+              </div>
+              <div className="flex gap-3 mb-3 text-xs text-muted-foreground">
+                <span><strong>Model:</strong> {result.model}</span>
+                <span>•</span>
+                <span><strong>Length:</strong> {result.finalSystemPromptLength.toLocaleString()} chars</span>
+                <span>•</span>
+                <span><strong>~Tokens:</strong> ~{Math.ceil(result.finalSystemPromptLength / 4).toLocaleString()}</span>
+              </div>
+              <pre className="text-xs bg-muted/50 border rounded-lg p-4 overflow-auto max-h-[500px] whitespace-pre-wrap break-words font-mono">
+{result.finalSystemPrompt}
+              </pre>
+
+              <details className="mt-4">
+                <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                  Xem full messages array (system + user)
+                </summary>
+                <pre className="mt-2 text-xs bg-muted/30 border rounded-lg p-4 overflow-auto max-h-[300px] whitespace-pre-wrap break-words font-mono">
+{JSON.stringify(result.finalMessages, null, 2)}
+                </pre>
+              </details>
+            </Card>
           </>
         )}
       </div>
