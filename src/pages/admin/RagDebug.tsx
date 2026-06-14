@@ -48,6 +48,7 @@ export default function RagDebug() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RagResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
   const { toast } = useToast();
 
   const runTest = async (q?: string) => {
