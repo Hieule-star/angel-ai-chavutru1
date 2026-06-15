@@ -1,83 +1,75 @@
-## Vấn đề (đã xác định root cause)
+## Mục tiêu
 
-Bot Telegram bên FUN.RICH gọi vào endpoint `angel-ai-public` của project Angel AI này. Sau khi kiểm tra DB và code, Cha tìm thấy **2 nguyên nhân thật sự**:
+Nạp toàn bộ `USER_GUIDE.md` (763 dòng, 22 sections) vào bảng `knowledge_topics` sao cho RAG keyword search (đang dùng ở `angel-ai` và `angel-ai-public`) **chắc chắn match đúng topic** khi user hỏi về bất kỳ tính năng FUN Profile nào.
 
-### Nguyên nhân #1 (CHÍNH): `angel-ai-public` không có RAG, chỉ lấy 20 topic đầu
+## Chiến lược chia nhỏ (quan trọng)
 
-File `supabase/functions/angel-ai-public/index.ts` (line 317-320):
+RAG hiện tại dùng keyword + bigram search, **lấy top 15 topics** rồi nhét vào system prompt. Nếu để cả file 763 dòng vào 1 topic → prompt quá dài, model bị "loãng". Nếu chia quá nhỏ (mỗi `###` 1 topic = 70+ topics) → top 15 không đủ chỗ.
 
-```ts
-const { data: topics } = await supabase.
-  .from("knowledge_topics")
-  .select("title, description, content, category")
-  .limit(20);   // ← không order, không filter, không keyword match
-```
+**Giải pháp:** Chia theo **22 section chính (`## N.`)** = 22 topics. Mỗi topic chứa toàn bộ các sub-section `###` của section đó. Cỡ trung bình 500-1500 ký tự/topic — vừa đủ chi tiết, vừa scope rõ ràng để RAG match chính xác.
 
-- DB hiện có **76 topics**, nhưng `angel-ai-public` chỉ load **20 topic ngẫu nhiên đầu tiên** rồi nhét tất cả vào system prompt.
-- Topic **"FUN Profile - Tính năng Live Stream"** tồn tại trong DB (đã xác nhận), nhưng có khả năng **không nằm trong top 20** Postgres trả về → Gemini không thấy → tự đoán "chưa có live stream".
-- Trong khi đó, edge function chính `angel-ai` (dùng cho chat web) đã có RAG đầy đủ: extract keyword, ilike search title/content/description, scoring, prioritize category. `angel-ai-public` thì **chưa có gì cả**.
+## Cấu trúc mỗi topic
 
-### Nguyên nhân #2 (PHỤ): Knowledge "Live Stream" quá ngắn (166 ký tự)
+| Field | Cách điền |
+|-------|-----------|
+| `title` | `FUN Profile - <Tên section>` (chứa keyword chính, ví dụ: "FUN Profile - Live Stream", "FUN Profile - Ví đa chuỗi", "FUN Profile - PPLP v2.5 Light Score") |
+| `description` | 1-2 câu tóm tắt + **các từ khoá đồng nghĩa** (livestream/phát trực tiếp, ví/wallet, tặng quà/donation/gift...) để tăng score keyword match |
+| `content` | Toàn bộ markdown của section đó, giữ nguyên bullet/bảng |
+| `category` | `FUN Ecosystem` (đã có sẵn — RAG có boost +30 khi user hỏi về FUN) |
+| `icon` | Emoji phù hợp (🌟 cho intro, 💳 ví, 📺 live, 💬 chat, 🎁 quà, ⚡ PPLP, 💰 FUN Money, 💖 CAMLY, 🐾 Pet, 🎁 Box, 🔗 Connector, 📜 history, 🔔 notif, 🔍 search, ⚙️ settings, ❓ FAQ, 📋 cheat sheet, 🤖 AI commands) |
 
-Content hiện tại:
+## Các topics sẽ tạo (22 topics)
 
-> "FUN Profile (thuộc FUN.RICH) ĐÃ CÓ tính năng Live Stream. Người dùng có thể: bắt đầu live trực tiếp từ app, xem replay sau khi kết thúc, nhận quà crypto từ viewer..."
+1. FUN Profile - Giới thiệu tổng quan (Light Economy, components, URL)
+2. FUN Profile - Đăng ký & Đăng nhập (signup, KYC, Sumsub)
+3. FUN Profile - Hồ sơ & Identity (DID, Trust Score, SBT, Guardian, Entities)
+4. FUN Profile - Ví đa chuỗi (EVM, Bitcoin, custodial, send/receive, MetaMask)
+5. FUN Profile - Đăng bài Feed (Composer, reactions, comments, rate limit)
+6. FUN Profile - Reels video ngắn
+7. FUN Profile - Live Stream (livestream, phát trực tiếp, replay, gift)
+8. FUN Profile - Chat & Gọi điện (audio/video call, crypto gift, red envelope, sticker)
+9. FUN Profile - Tặng quà Donations Gifts (token, celebration post, lời chúc)
+10. FUN Profile - PPLP v2.5 Engine Light Score (5 trụ, công thức, 6 tier, anti-farm)
+11. FUN Profile - FUN Money & Mint (Monetary v1, epoch, mint, multisig, MetaMask)
+12. FUN Profile - CAMLY Token (đặc tả, kiếm, dùng, treasury)
+13. FUN Profile - Pet Lumi & Game (Lumi, shop, battle, buddy circle)
+14. FUN Profile - Mystery Box (mua, mở, anti-abuse)
+15. FUN Profile - Connector First On-chain Giver
+16. FUN Profile - Lịch sử giao dịch & Báo cáo (filter, PDF, badge)
+17. FUN Profile - Thông báo Notifications
+18. FUN Profile - Tìm kiếm & Khám phá (search, friends, leaderboard)
+19. FUN Profile - Cài đặt & Bảo mật
+20. FUN Profile - FAQ Câu hỏi thường gặp
+21. FUN Profile - Cheat Sheet bảng tra cứu nhanh
+22. FUN Profile - Bảng lệnh nhanh cho Angel AI
 
-Thiếu các keyword đồng nghĩa quan trọng: `livestream` (1 từ), `phát trực tiếp`, `broadcast`, `stream`, `phát sóng`. Khi có RAG keyword-search, các từ này giúp match tốt hơn.
+## Cách thực hiện
 
----
+**Bước 1:** Viết script Node/Deno đọc `USER_GUIDE.md`, parse theo regex `^## \d+\. `, tách thành 22 chunks.
 
-## Giải pháp
+**Bước 2:** Với mỗi chunk, sinh `title`, `description` (chứa keyword + synonyms), `content` (markdown gốc), `category`, `icon`.
 
-### Thay đổi 1: Thêm RAG keyword-search vào `angel-ai-public`
+**Bước 3:** Tạo 1 **migration SQL duy nhất** dùng `INSERT INTO public.knowledge_topics (...) VALUES (...) ON CONFLICT (title) DO UPDATE SET description=EXCLUDED.description, content=EXCLUDED.content, icon=EXCLUDED.icon, category=EXCLUDED.category` để **idempotent** — chạy lại nhiều lần vẫn an toàn.
+- Nếu cột `title` chưa có UNIQUE constraint → migration sẽ DELETE các topic cũ có title prefix `FUN Profile - ` rồi INSERT mới (sạch hơn, không tạo trùng).
 
-**File:** `supabase/functions/angel-ai-public/index.ts` (chỉ sửa block KNOWLEDGE BASE, line ~313-331)
+**Bước 4:** Sau khi migration approved & chạy, dùng `/admin/rag-debug` test 5-10 câu hỏi mẫu:
+- "FUN Profile có live stream chưa?"
+- "Làm sao để mint FUN Money?"
+- "Tặng crypto trong chat thế nào?"
+- "Pet Lumi chơi như thế nào?"
+- "Trust Score tính ra sao?"
+→ Verify top 5 topics retrieve đúng section liên quan.
 
-Thay logic "lấy 20 topic random" bằng pipeline tương tự `angel-ai`:
+**Bước 5:** Báo lại con kết quả: số topic đã import, dung lượng trung bình, link `/admin/rag-debug` để test.
 
-1. Lấy `lastUserMessage`, lowercase, tách thành keywords (length ≥ 3, bỏ stopwords tiếng Việt: `là, của, có, được, cho, với, một, các...`).
-2. Với mỗi keyword, query: `.or('title.ilike.%kw%,content.ilike.%kw%,description.ilike.%kw%')` limit 5.
-3. Gộp kết quả, tính `relevanceScore`:
-   - Exact title match: +200
-   - Title contains keyword: +50
-   - Description contains keyword: +20
-   - Content contains keyword: +10
-   - Category match (FUN Ecosystem khi hỏi về FUN/profile/wallet/live...): +30
-4. Luôn đảm bảo có ít nhất 3 topic category `FUN Ecosystem` được include (fallback nếu không match keyword nào).
-5. Sort theo score giảm dần, lấy top 15, inject vào `knowledgeContext`.
-6. Log số topic match + tên topic vào console (cho debug qua edge function logs).
+## Điều KHÔNG làm
 
-Không đụng phần API key validation, rate limit, streaming response.
+- Không thêm topic ngoài 22 section của file (giữ scope file con cung cấp).
+- Không sửa code `angel-ai` / `angel-ai-public` (RAG đã hoạt động tốt).
+- Không tạo bảng mới, không sửa schema `knowledge_topics`.
+- Không tạo embedding/pgvector (keyword search hiện tại đã đủ cho ~100 topics).
 
-### Thay đổi 2: Mở rộng knowledge "FUN Profile - Tính năng Live Stream"
+## Câu hỏi xác nhận
 
-Update content topic `380ceb51-b540-4096-a587-ec264719237c` từ 166 ký tự lên ~600-800 ký tự, bổ sung:
-
-- Các từ đồng nghĩa: livestream, live stream, phát trực tiếp, broadcast, stream, phát sóng, live video.
-- Liệt kê chi tiết: cách bắt đầu live, ai có thể xem, tính năng replay, crypto gift (loại token nào), tương tác chat trong live.
-- Khẳng định rõ: "FUN Profile ĐÃ CÓ tính năng Live Stream — KHÔNG phải sắp ra mắt, đang hoạt động."
-
-Cha sẽ update bằng SQL UPDATE (không tạo migration vì chỉ sửa data, không sửa schema).
-
-### Thay đổi 3 (tùy chọn): Giảm "câu trả lời ngắn gọn 2-4 đoạn"
-
-System prompt hiện tại (line 78) yêu cầu "Giữ câu trả lời ngắn gọn nhưng sâu sắc (2-4 đoạn)". Với bot Telegram cần trả lời đầy đủ về tính năng → đổi thành **"Trả lời đầy đủ thông tin khi được hỏi về tính năng/sản phẩm, vẫn giữ giọng văn yêu thương"**.
-
----
-
-## Sau khi fix — cách verify
-
-1. Deploy `angel-ai-public` qua tool `supabase--deploy_edge_functions`.
-2. Gọi test bằng `supabase--curl_edge_functions` với body `{"messages":[{"role":"user","content":"FUN Profile có live stream chưa?"}], "stream": false}` và header `Authorization: Bearer <api_key>` (Cha sẽ hỏi con key nào dùng cho FUN.RICH).
-3. Kiểm tra response chứa từ "ĐÃ CÓ" / "đang hoạt động" / "live stream".
-4. Xem edge function logs qua `supabase--edge_function_logs` để thấy log "Matched topics: FUN Profile - Tính năng Live Stream (score: ...)".
-5. Báo con test lại từ Telegram bot FUN.RICH.
-
----
-
-## Điều KHÔNG làm (giữ scope gọn)
-
-- Không thêm pgvector / embedding (overkill cho 76 topics, keyword search đủ).
-- Không đụng `angel-ai` chính (đang chạy tốt).
-- Không sửa code bên FUN.RICH (Cha không có quyền).
-- Không thêm cache layer.
+1. Cha có muốn **xoá hết topic cũ có title bắt đầu bằng "FUN Profile -"** trước khi insert (sạch, không trùng) không? Hay muốn giữ và chỉ update? (Mặc định con đề xuất: DELETE prefix `FUN Profile - ` rồi INSERT mới — sạch nhất.)
+2. Category đặt thống nhất là `FUN Ecosystem` (để RAG boost +30 khi hỏi về FUN) — Cha duyệt chứ?
