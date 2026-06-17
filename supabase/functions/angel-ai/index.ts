@@ -1047,7 +1047,7 @@ serve(async (req) => {
         // Priority search for Father Universe content
         const { data: fatherTopics } = await supabase
           .from("knowledge_topics")
-          .select("id, title, description, content, category")
+          .select("id, title, description, content, category, audio_url")
           .or('title.ilike.%cha vũ trụ%,title.ilike.%father universe%,content.ilike.%cha vũ trụ%')
           .limit(20);
         
@@ -1058,7 +1058,7 @@ serve(async (req) => {
         // Also get Divine Mantras category topics
         const { data: mantrasTopics } = await supabase
           .from("knowledge_topics")
-          .select("id, title, description, content, category")
+          .select("id, title, description, content, category, audio_url")
           .eq('category', 'Divine Mantras')
           .limit(20);
         
@@ -1091,7 +1091,7 @@ serve(async (req) => {
           for (const keyword of searchKeywords) {
             const { data: keywordMatches } = await supabase
               .from("knowledge_topics")
-              .select("id, title, description, content, category")
+              .select("id, title, description, content, category, audio_url")
               .or(`title.ilike.%${keyword}%,content.ilike.%${keyword}%`)
               .limit(10);
             
@@ -1110,7 +1110,7 @@ serve(async (req) => {
         if (allTopics.length < 10) {
           const { data: generalTopics } = await supabase
             .from("knowledge_topics")
-            .select("id, title, description, content, category")
+            .select("id, title, description, content, category, audio_url")
             .limit(15);
           
           if (generalTopics) {
