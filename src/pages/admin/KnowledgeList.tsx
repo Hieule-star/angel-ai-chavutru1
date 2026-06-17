@@ -42,6 +42,7 @@ interface KnowledgeTopic {
   description: string | null;
   content: string | null;
   category: string | null;
+  audio_url: string | null;
   created_at: string | null;
 }
 
