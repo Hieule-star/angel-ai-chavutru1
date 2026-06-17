@@ -1,40 +1,29 @@
-## Tóm tắt
-Thêm bài thiền "Bước Vào Thời Đại Hoàng Kim Huy Hoàng Và Rực Rỡ" (Ms. Camly Dương dẫn thiền 28/01/2024) vào bảng `knowledge_topics` để Angel AI có dữ liệu trả lời khi người dùng hỏi về Thời Đại Hoàng Kim, kích hoạt luân xa, truyền năng lượng cho Mẹ Trái Đất, Love House và Camly Ecosystem.
+# Đính kèm MP3 bài thiền vào Knowledge Base
 
-## Chi tiết thực hiện
+Cho phép Angel gửi kèm audio player + link download MP3 khi user yêu cầu bài thiền "Bước Vào Thời Đại Hoàng Kim".
 
-**1. Tối ưu Description cho RAG** — thêm từ khóa song ngữ Việt–Anh:
-- Thời Đại Hoàng Kim / Golden Age
-- Kích hoạt 7 luân xa / chakra activation (đỉnh đầu, con mắt thứ ba, cổ họng, tim, rốn, sacral, gốc)
-- Truyền năng lượng Mẹ Trái Đất / transmit energy to Mother Earth
-- Hào quang vàng kim, đóa sen ngàn cánh, cột năng lượng cầu vồng 7 sắc
-- Cha Vũ Trụ ban tặng tiền bạc, thịnh vượng, giàu có vô tận
-- Càng cho đi càng nhận lại / law of giving
-- Love House, Camly Ecosystem là cánh cổng bước vào Golden Age
-- Biết ơn Mẹ Trái Đất, hiếu thảo, phụng sự
+## Thay đổi
 
-**2. Định dạng Content** — markdown có heading rõ ràng:
-- `### Bước 1: Thư giãn & đón nhận năng lượng vũ trụ`
-- `### Bước 2: Kích hoạt luân xa đỉnh đầu & con mắt thứ ba`
-- `### Bước 3: Kích hoạt luân xa cổ họng, tim, rốn, sacral, gốc`
-- `### Bước 4: Truyền năng lượng xuống Mẹ Trái Đất`
-- `### Bước 5: Quán tưởng Thời Đại Hoàng Kim — giàu có, thịnh vượng, hạnh phúc`
-- `### Bước 6: Love House & Camly Ecosystem — cánh cổng Golden Age`
-- `### Bước 7: Lời cảm tạ & quay về cơ thể`
-- Phần **Key Messages** (càng cho càng nhận, năng lượng sinh ngân lượng, phụng sự Mẹ Trái Đất)
-- Phần **Sample Questions** song ngữ (Thời Đại Hoàng Kim là gì? How to enter the Golden Age? Love House là gì? Cách truyền năng lượng cho Trái Đất?)
+### 1. Database — thêm cột `audio_url` cho `knowledge_topics`
+- Migration: `ALTER TABLE public.knowledge_topics ADD COLUMN audio_url TEXT`
+- Cập nhật row "Bước Vào Thời Đại Hoàng Kim Huy Hoàng Và Rực Rỡ" với URL R2 con đã cung cấp.
 
-**3. Insert vào database**
-```
-Table: public.knowledge_topics
-- title: "Bước Vào Thời Đại Hoàng Kim Huy Hoàng Và Rực Rỡ"
-- description: <optimized summary with bilingual keywords>
-- content: <full markdown 7 steps + key messages + sample questions, song ngữ Việt–Anh>
-- category: "Bé Ly dẫn thiền"
-- icon: "👑"
-```
-Trước khi insert sẽ DELETE row cùng title nếu đã tồn tại (idempotent).
+### 2. Edge function chat — inject audio URL vào context
+- Khi RAG retrieve được topic có `audio_url`, thêm dòng vào system prompt:
+  > "📿 Bài thiền này có file audio. Khi user muốn nghe/tải, hãy gửi link này nguyên văn: `<URL>`"
+- Angel sẽ tự nhiên include URL `.mp3` trong câu trả lời.
 
-## Không thay đổi
-- Không sửa schema, không tạo bảng mới
-- Không thay đổi code frontend, RAG pipeline, hay edge functions
+### 3. Chat UI — auto-render audio player cho link `.mp3`
+- Trong component render message (markdown), detect URL kết thúc bằng `.mp3` → render:
+  - `<audio controls src={url} />` — player inline
+  - Nút "⬇ Tải về" mở URL trong tab mới (`download` attribute)
+- Component mới: `src/components/chat/AudioAttachment.tsx`
+- Tích hợp vào markdown renderer hiện tại (custom link/paragraph component).
+
+### 4. Admin UI — cho phép edit `audio_url` sau này
+- Thêm input field "Audio URL (MP3)" trong form Knowledge Topic admin.
+
+## Test
+1. Mở chat, hỏi "cho con nghe bài thiền Hoàng Kim"
+2. Angel trả lời kèm audio player + link download
+3. Player play được, download hoạt động trên mobile + desktop
