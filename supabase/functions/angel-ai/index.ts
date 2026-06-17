@@ -1145,15 +1145,20 @@ serve(async (req) => {
       console.log("=========================");
 
       if (uniqueTopics.length > 0) {
+        const topicsWithAudio = uniqueTopics.filter(t => t.audio_url && t.audio_url.trim().length > 0);
+        const audioInstruction = topicsWithAudio.length > 0
+          ? `\n\n📿 AUDIO ATTACHMENTS AVAILABLE:\nNếu user muốn nghe / tải / thực hành bài thiền hoặc bài audio bên dưới, HÃY include URL audio NGUYÊN VĂN (raw URL, không markdown) trên một dòng riêng trong câu trả lời. Hệ thống sẽ tự động render thành audio player + nút tải về.\n\n${topicsWithAudio.map(t => `- "${t.title}": ${t.audio_url}`).join('\n')}\n`
+          : '';
+
         knowledgeContext = `
 
 ========================
 KNOWLEDGE BASE CONTEXT
 ========================
 Use this knowledge to inform your responses when relevant:
-
+${audioInstruction}
 ${uniqueTopics
-  .map((t) => `### ${t.title}\n${t.description || ''}\n\n${t.content || ''}`)
+  .map((t) => `### ${t.title}${t.audio_url ? ` [AUDIO: ${t.audio_url}]` : ''}\n${t.description || ''}\n\n${t.content || ''}`)
   .join("\n\n---\n\n")}`;
         
         usedSources = uniqueTopics.slice(0, 5).map(t => ({
@@ -1162,6 +1167,7 @@ ${uniqueTopics
           category: t.category || 'General'
         }));
       }
+
     }
 
     // ==================================================
