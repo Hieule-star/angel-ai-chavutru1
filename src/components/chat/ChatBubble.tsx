@@ -4,6 +4,7 @@ import { Zap, Sparkles, Brain, BookOpen, ChevronDown, ChevronUp, ExternalLink, R
 import { Link } from 'react-router-dom';
 import type { ChatMessage, AIModel, AIProvider } from '@/types';
 import angelLogo from '@/assets/angel-logo.png';
+import { AudioAttachment, extractAudioUrls } from './AudioAttachment';
 
 interface ChatBubbleProps {
   message: ChatMessage;
@@ -87,9 +88,20 @@ export function ChatBubble({ message }: ChatBubbleProps) {
             )}
           </div>
         )}
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">
-          {message.message}
-        </p>
+        {(() => {
+          const { cleanText, audioUrls } = extractAudioUrls(message.message);
+          return (
+            <>
+              {cleanText && (
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{cleanText}</p>
+              )}
+              {audioUrls.map((url) => (
+                <AudioAttachment key={url} url={url} />
+              ))}
+            </>
+          );
+        })()}
+
         
         {/* Sources Section */}
         {hasSources && (

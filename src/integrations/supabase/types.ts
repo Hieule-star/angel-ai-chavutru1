@@ -210,6 +210,7 @@ export type Database = {
       }
       knowledge_topics: {
         Row: {
+          audio_url: string | null
           category: string | null
           content: string | null
           created_at: string | null
@@ -219,6 +220,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          audio_url?: string | null
           category?: string | null
           content?: string | null
           created_at?: string | null
@@ -228,6 +230,7 @@ export type Database = {
           title: string
         }
         Update: {
+          audio_url?: string | null
           category?: string | null
           content?: string | null
           created_at?: string | null

@@ -42,6 +42,7 @@ interface KnowledgeTopic {
   description: string | null;
   content: string | null;
   category: string | null;
+  audio_url: string | null;
   created_at: string | null;
 }
 
@@ -121,6 +122,7 @@ export default function KnowledgeList() {
           description: editTopic.description,
           content: editTopic.content,
           category: editTopic.category,
+          audio_url: editTopic.audio_url,
         })
         .eq('id', editTopic.id);
 
@@ -423,6 +425,22 @@ export default function KnowledgeList() {
                     rows={12}
                     className="font-mono text-sm"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-audio">🎵 Audio URL (MP3)</Label>
+                  <Input
+                    id="edit-audio"
+                    type="url"
+                    value={editTopic.audio_url || ''}
+                    onChange={(e) =>
+                      setEditTopic({ ...editTopic, audio_url: e.target.value })
+                    }
+                    placeholder="https://.../bai-thien.mp3"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Link MP3 trực tiếp. Khi user hỏi về topic này, Angel sẽ tự động đính kèm audio player + nút tải về.
+                  </p>
                 </div>
               </div>
             )}
