@@ -122,6 +122,7 @@ export default function KnowledgeList() {
           description: editTopic.description,
           content: editTopic.content,
           category: editTopic.category,
+          audio_url: editTopic.audio_url,
         })
         .eq('id', editTopic.id);
 
