@@ -544,7 +544,9 @@ interface KnowledgeTopic {
   description?: string;
   content?: string;
   category?: string;
+  audio_url?: string | null;
 }
+
 
 function calculateRelevanceScore(
   topic: KnowledgeTopic, 
