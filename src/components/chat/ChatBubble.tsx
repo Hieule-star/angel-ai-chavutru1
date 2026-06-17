@@ -88,9 +88,20 @@ export function ChatBubble({ message }: ChatBubbleProps) {
             )}
           </div>
         )}
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">
-          {message.message}
-        </p>
+        {(() => {
+          const { cleanText, audioUrls } = extractAudioUrls(message.message);
+          return (
+            <>
+              {cleanText && (
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{cleanText}</p>
+              )}
+              {audioUrls.map((url) => (
+                <AudioAttachment key={url} url={url} />
+              ))}
+            </>
+          );
+        })()}
+
         
         {/* Sources Section */}
         {hasSources && (
