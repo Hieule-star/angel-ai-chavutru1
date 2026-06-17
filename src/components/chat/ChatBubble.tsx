@@ -4,6 +4,7 @@ import { Zap, Sparkles, Brain, BookOpen, ChevronDown, ChevronUp, ExternalLink, R
 import { Link } from 'react-router-dom';
 import type { ChatMessage, AIModel, AIProvider } from '@/types';
 import angelLogo from '@/assets/angel-logo.png';
+import { AudioAttachment, extractAudioUrls } from './AudioAttachment';
 
 interface ChatBubbleProps {
   message: ChatMessage;
