@@ -1,29 +1,22 @@
-# Đính kèm MP3 bài thiền vào Knowledge Base
+## TUYÊN NGÔN FUN KINGDOM — Thêm vào Knowledge Base
 
-Cho phép Angel gửi kèm audio player + link download MP3 khi user yêu cầu bài thiền "Bước Vào Thời Đại Hoàng Kim".
+### Nội dung
+Nội dung người dùng cung cấp là bản tuyên ngôn của FUN Kingdom (Father Universe Network), bao gồm:
+- Giá trị cốt lõi: Tình Yêu, Trí Tuệ, Ý Chí, Hạnh Phúc, Thịnh Vượng
+- Tầm nhìn: Mạng lưới kết nối những trái tim hướng về Ánh Sáng
+- Lời kêu gọi: Thực hành Sám Hối, Biết Ơn, phụng sự nhân loại
+- 8 Divine Mantras kết thúc bản tuyên ngôn
 
-## Thay đổi
+### Thực hiện
+1. Chèn một knowledge topic mới vào bảng `knowledge_topics` với:
+   - **Tiêu đề**: Tuyên Ngôn FUN Kingdom
+   - **Category**: FUN Ecosystem
+   - **Mô tả**: Bản tuyên ngôn chính thức của FUN Kingdom — Father Universe Network
+   - **Nội dung**: Toàn văn bản tuyên ngôn người dùng đã gửi
+   - **Icon**: 👑 (phù hợp chủ đề Kingdom)
 
-### 1. Database — thêm cột `audio_url` cho `knowledge_topics`
-- Migration: `ALTER TABLE public.knowledge_topics ADD COLUMN audio_url TEXT`
-- Cập nhật row "Bước Vào Thời Đại Hoàng Kim Huy Hoàng Và Rực Rỡ" với URL R2 con đã cung cấp.
+2. Không cần thay đổi schema hay code — chỉ thêm dữ liệu.
 
-### 2. Edge function chat — inject audio URL vào context
-- Khi RAG retrieve được topic có `audio_url`, thêm dòng vào system prompt:
-  > "📿 Bài thiền này có file audio. Khi user muốn nghe/tải, hãy gửi link này nguyên văn: `<URL>`"
-- Angel sẽ tự nhiên include URL `.mp3` trong câu trả lời.
-
-### 3. Chat UI — auto-render audio player cho link `.mp3`
-- Trong component render message (markdown), detect URL kết thúc bằng `.mp3` → render:
-  - `<audio controls src={url} />` — player inline
-  - Nút "⬇ Tải về" mở URL trong tab mới (`download` attribute)
-- Component mới: `src/components/chat/AudioAttachment.tsx`
-- Tích hợp vào markdown renderer hiện tại (custom link/paragraph component).
-
-### 4. Admin UI — cho phép edit `audio_url` sau này
-- Thêm input field "Audio URL (MP3)" trong form Knowledge Topic admin.
-
-## Test
-1. Mở chat, hỏi "cho con nghe bài thiền Hoàng Kim"
-2. Angel trả lời kèm audio player + link download
-3. Player play được, download hoạt động trên mobile + desktop
+### Kết quả mong đợi
+- Người dùng có thể tìm thấy và hỏi Angel về Tuyên Ngôn FUN Kingdom trong chat.
+- Angel sẽ trả lời dựa trên nội dung đã lưu trong knowledge base.
