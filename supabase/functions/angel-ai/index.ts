@@ -547,6 +547,77 @@ interface KnowledgeTopic {
   audio_url?: string | null;
 }
 
+// ==================================================
+// RAG TEXT NORMALIZATION HELPERS
+// ==================================================
+function removeDiacritics(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+}
+
+const VN_NUMBER_WORDS: Record<string, string> = {
+  'mot': '1', 'hai': '2', 'ba': '3', 'bon': '4', 'nam': '5',
+  'sau': '6', 'bay': '7', 'tam': '8', 'chin': '9', 'muoi': '10',
+  'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
+  'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
+};
+
+const SYNONYM_MAP: Record<string, string[]> = {
+  'freedom': ['tự do', 'tu do'],
+  'liberation': ['tự do', 'giải phóng'],
+  'giai phong': ['tự do', 'giải phóng'],
+  'tu tai': ['tự do', 'tự tại'],
+  'layer': ['tầng', 'tang'],
+  'layers': ['tầng', 'tang'],
+  'level': ['tầng', 'cấp', 'bậc'],
+  'absolute': ['tuyệt đối', 'tuyet doi'],
+  'meditation': ['thiền', 'thien', 'dẫn thiền'],
+  'meditate': ['thiền', 'thien'],
+  'repent': ['sám hối', 'sam hoi'],
+  'gratitude': ['biết ơn', 'biet on'],
+  'kingdom': ['kingdom', 'tuyên ngôn'],
+};
+
+const RAG_STOPWORDS = new Set([
+  'cho','tôi','toi','bài','bai','của','cua','là','la','và','va','con','muốn','muon',
+  'xin','ơi','oi','một','mot','các','cac','này','nay','đó','được','duoc','ạ',
+  'với','voi','về','ve','cần','can','hay','thì','thi','mình','minh','bạn','ban','nhé','nhe',
+  'gì','gi','như','nhu','để','de','khi','nào','nao','rồi','roi','đi','di','ở',
+  'có','co','không','khong','sẽ','se','đã','da','vào','vao','ra','lên','len','xuống','xuong',
+  'the','of','to','for','in','is','it','me','my','please','can','you','what','how','show','give','want','about','an',
+]);
+
+function normalizeQuery(text: string): { raw: string; bare: string; expanded: string[] } {
+  const raw = text.toLowerCase();
+  const bare = removeDiacritics(raw);
+  const expanded = new Set<string>();
+  const bareTokens = bare.replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean);
+  for (const tok of bareTokens) {
+    if (VN_NUMBER_WORDS[tok]) expanded.add(VN_NUMBER_WORDS[tok]);
+    if (SYNONYM_MAP[tok]) SYNONYM_MAP[tok].forEach(s => expanded.add(s));
+  }
+  for (let i = 0; i < bareTokens.length - 1; i++) {
+    const bg = `${bareTokens[i]} ${bareTokens[i+1]}`;
+    if (SYNONYM_MAP[bg]) SYNONYM_MAP[bg].forEach(s => expanded.add(s));
+  }
+  return { raw, bare, expanded: Array.from(expanded) };
+}
+
+function generateRagPhrases(text: string): string[] {
+  const lower = text.toLowerCase();
+  const clean = lower.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+  const tokens = clean.split(' ').filter(t => t.length >= 2 && !RAG_STOPWORDS.has(t) && !RAG_STOPWORDS.has(removeDiacritics(t)));
+  const phrases = new Set<string>(tokens);
+  for (let i = 0; i < tokens.length - 1; i++) {
+    phrases.add(`${tokens[i]} ${tokens[i+1]}`);
+    if (i < tokens.length - 2) phrases.add(`${tokens[i]} ${tokens[i+1]} ${tokens[i+2]}`);
+  }
+  const withBare = new Set<string>(phrases);
+  for (const p of phrases) {
+    const b = removeDiacritics(p);
+    if (b !== p) withBare.add(b);
+  }
+  return Array.from(withBare).sort((a, b) => b.length - a.length).slice(0, 16);
+}
 
 function calculateRelevanceScore(
   topic: KnowledgeTopic, 
@@ -555,49 +626,58 @@ function calculateRelevanceScore(
 ): number {
   let score = 0;
   const titleLower = topic.title.toLowerCase();
+  const descLower = (topic.description || '').toLowerCase();
   const contentLower = (topic.content || '').toLowerCase();
+  const titleBare = removeDiacritics(titleLower);
+  const descBare = removeDiacritics(descLower);
+  const contentBare = removeDiacritics(contentLower);
   const messageLower = userMessage.toLowerCase();
+  const messageBare = removeDiacritics(messageLower);
   
-  // ==== FATHER UNIVERSE QUERY SCORING ====
   if (isFatherQuery) {
-    // Highest priority: Father Universe content
     if (isFatherUniverseContent(topic.title, topic.content)) {
       score += 200;
-      console.log(`[SCORE +200] Father Universe content: ${topic.title}`);
     }
-    
-    // Strong penalty for Buddhist content when asking about Father Universe
     if (isBuddhistContent(topic.title, topic.content)) {
       score -= 500;
-      console.log(`[SCORE -500] Buddhist content excluded: ${topic.title}`);
     }
-    
-    // Extra boost for exact "8 câu thần chú" match
     if (titleLower.includes('8 câu thần chú') || titleLower.includes('thần chú của cha vũ trụ')) {
       score += 100;
-      console.log(`[SCORE +100] Exact mantra match: ${topic.title}`);
     }
   }
   
-  // ==== STANDARD KEYWORD MATCHING ====
-  const messageWords = messageLower.split(/\s+/).filter(w => w.length > 2);
-  for (const word of messageWords) {
-    if (titleLower.includes(word)) {
-      score += 15;
-    }
-    if (contentLower.includes(word)) {
-      score += 5;
+  // Weighted phrase matching (title ×high, description ×mid, content ×low)
+  const phrases = generateRagPhrases(userMessage);
+  for (const p of phrases) {
+    const isMulti = p.includes(' ');
+    const titleHit = titleLower.includes(p) || titleBare.includes(p);
+    const descHit = descLower.includes(p) || descBare.includes(p);
+    const contentHit = contentLower.includes(p) || contentBare.includes(p);
+    if (titleHit) score += isMulti ? 30 : 15;
+    if (descHit) score += isMulti ? 12 : 6;
+    if (contentHit) score += isMulti ? 6 : 2;
+    if (titleHit && isMulti && p.length >= 8) score += 20;
+  }
+  
+  // Bonus: "N tầng tự do" intent
+  const hasFreedom = messageBare.includes('tu do') || messageBare.includes('freedom');
+  const hasLayer = messageBare.includes('tang') || messageBare.includes('layer') || messageBare.includes('level');
+  if (hasFreedom && hasLayer) {
+    const titleHasFreedom = titleBare.includes('tu do') || titleBare.includes('freedom');
+    const titleHasLayer = titleBare.includes('tang') || titleBare.includes('layer');
+    if (titleHasFreedom && titleHasLayer) {
+      score += 150;
+      console.log(`[SCORE +150] "tầng tự do" intent → ${topic.title}`);
     }
   }
   
-  // ==== CATEGORY BONUS ====
   if (topic.category) {
     const categoryLower = topic.category.toLowerCase();
-    if (messageLower.includes('thiền') && categoryLower.includes('meditation')) {
-      score += 50;
+    if (messageLower.includes('thiền') && (categoryLower.includes('meditation') || categoryLower.includes('thiền'))) {
+      score += 30;
     }
     if (messageLower.includes('ecosystem') && categoryLower.includes('ecosystem')) {
-      score += 50;
+      score += 30;
     }
   }
   
@@ -1071,89 +1151,60 @@ serve(async (req) => {
           }
         }
       } else {
-        // Standard keyword-based search
-        const searchKeywords: string[] = [];
+        // ==== NORMALIZED QUERY + PHRASE-BASED RAG SEARCH ====
+        const norm = normalizeQuery(lastUserMessage);
+        const ragPhrases = generateRagPhrases(lastUserMessage);
         
-        if (lowerMessage.includes('thiền') || lowerMessage.includes('meditation') || lowerMessage.includes('dẫn thiền')) {
-          searchKeywords.push('thiền', 'meditation', 'dẫn thiền');
-        }
-        if (lowerMessage.includes('fun ecosystem') || lowerMessage.includes('fun profile') || lowerMessage.includes('fun charity')) {
-          searchKeywords.push('fun ecosystem', 'fun profile');
-        }
-        if (lowerMessage.includes('camly') || lowerMessage.includes('bé ly')) {
-          searchKeywords.push('camly', 'bé ly');
-        }
-        if (lowerMessage.includes('thần chú') || lowerMessage.includes('mantra')) {
-          searchKeywords.push('thần chú', 'mantra');
-        }
-        if (lowerMessage.includes('tự do') || lowerMessage.includes('tầng')) {
+        // Hardcoded high-signal keywords (kept for backward compat)
+        const searchKeywords: string[] = [];
+        const bare = norm.bare;
+        if (bare.includes('thien') || bare.includes('meditation')) searchKeywords.push('thiền', 'meditation', 'dẫn thiền');
+        if (bare.includes('fun ecosystem') || bare.includes('fun profile') || bare.includes('fun charity')) searchKeywords.push('fun ecosystem', 'fun profile');
+        if (bare.includes('camly') || bare.includes('be ly')) searchKeywords.push('camly', 'bé ly');
+        if (bare.includes('than chu') || bare.includes('mantra')) searchKeywords.push('thần chú', 'mantra');
+        if (bare.includes('tu do') || bare.includes('tang') || bare.includes('freedom') || bare.includes('layer')) {
           searchKeywords.push('tự do', 'tầng', 'tuyệt đối');
         }
-        if (lowerMessage.includes('sám hối')) searchKeywords.push('sám hối');
-        if (lowerMessage.includes('biết ơn')) searchKeywords.push('biết ơn');
-        if (lowerMessage.includes('kingdom') || lowerMessage.includes('tuyên ngôn')) {
-          searchKeywords.push('kingdom', 'tuyên ngôn');
-        }
+        if (bare.includes('sam hoi') || bare.includes('repent')) searchKeywords.push('sám hối');
+        if (bare.includes('biet on') || bare.includes('gratitude')) searchKeywords.push('biết ơn');
+        if (bare.includes('kingdom') || bare.includes('tuyen ngon')) searchKeywords.push('kingdom', 'tuyên ngôn');
         
-        // ==== Dynamic phrase extraction from user message ====
-        const STOPWORDS = new Set([
-          'cho','tôi','toi','bài','bai','của','cua','là','la','và','va','con','muốn','muon',
-          'xin','ơi','oi','một','mot','các','cac','này','nay','đó','do','được','duoc','ạ','a',
-          'với','voi','về','ve','cần','can','hay','thì','thi','mình','minh','bạn','ban','nhé','nhe',
-          'gì','gi','như','nhu','để','de','khi','nào','nao','rồi','roi','đi','di','ở','o',
-          'có','co','không','khong','sẽ','se','đã','da','vào','vao','ra','lên','len','xuống','xuong',
-          'the','a','an','of','to','for','in','is','it','i','me','my','please','can','you','what','how',
-        ]);
-        const cleanMsg = lowerMessage.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
-        const tokens = cleanMsg.split(' ').filter(t => t.length >= 2 && !STOPWORDS.has(t) && !/^\d+$/.test(t));
-        const phrases = new Set<string>(tokens);
-        for (let i = 0; i < tokens.length - 1; i++) {
-          phrases.add(`${tokens[i]} ${tokens[i + 1]}`);
-        }
-        // Prioritize multi-word phrases first
-        const phraseList = Array.from(phrases).sort((a, b) => b.length - a.length).slice(0, 12);
+        const allSearchTerms = Array.from(new Set([...searchKeywords, ...ragPhrases, ...norm.expanded]));
+        console.log("[RAG] Normalized:", norm.bare);
+        console.log("[RAG] Search terms:", allSearchTerms);
         
-        const allSearchTerms = Array.from(new Set([...searchKeywords, ...phraseList]));
-        
-        if (allSearchTerms.length > 0) {
-          for (const term of allSearchTerms) {
-            const safe = term.replace(/[,()]/g, ' ').trim();
-            if (!safe) continue;
-            const { data: keywordMatches } = await supabase
-              .from("knowledge_topics")
-              .select("id, title, description, content, category, audio_url")
-              .or(`title.ilike.%${safe}%,content.ilike.%${safe}%`)
-              .limit(8);
-            
-            if (keywordMatches) {
-              const existingIds = new Set(allTopics.map(t => t.id));
-              for (const topic of keywordMatches) {
-                if (!existingIds.has(topic.id)) {
-                  allTopics.push(topic);
-                }
-              }
+        for (const term of allSearchTerms) {
+          const safe = term.replace(/[,()%]/g, ' ').trim();
+          if (!safe) continue;
+          const { data: keywordMatches } = await supabase
+            .from("knowledge_topics")
+            .select("id, title, description, content, category, audio_url")
+            .or(`title.ilike.%${safe}%,description.ilike.%${safe}%,content.ilike.%${safe}%`)
+            .limit(8);
+          if (keywordMatches) {
+            const existingIds = new Set(allTopics.map(t => t.id));
+            for (const topic of keywordMatches) {
+              if (!existingIds.has(topic.id)) allTopics.push(topic);
             }
           }
         }
         
-        // Fill with most recent general topics if needed
+        // Fill with most recent general topics if pool is still thin
         if (allTopics.length < 10) {
           const { data: generalTopics } = await supabase
             .from("knowledge_topics")
             .select("id, title, description, content, category, audio_url")
             .order('created_at', { ascending: false })
             .limit(20);
-          
           if (generalTopics) {
             const existingIds = new Set(allTopics.map(t => t.id));
             for (const topic of generalTopics) {
-              if (!existingIds.has(topic.id) && allTopics.length < 25) {
-                allTopics.push(topic);
-              }
+              if (!existingIds.has(topic.id) && allTopics.length < 25) allTopics.push(topic);
             }
           }
         }
       }
+
 
       
       // ==== SCORE AND FILTER TOPICS ====
@@ -1165,13 +1216,16 @@ serve(async (req) => {
       }));
       
       // Filter out negative scores (Buddhist content when asking about Father Universe)
-      const filteredTopics = scoredTopics.filter(t => t.relevanceScore >= 0);
+      // For non-Father queries, also drop zero-score topics (no phrase from query matched)
+      const filteredTopics = scoredTopics.filter(t =>
+        isFatherQuery ? t.relevanceScore >= 0 : t.relevanceScore > 0
+      );
       
-      // Sort by relevance score (highest first)
       filteredTopics.sort((a, b) => b.relevanceScore - a.relevanceScore);
       
-      // Take top 20 topics
-      const uniqueTopics = filteredTopics.slice(0, 20);
+      // Tighter top-N to increase signal density in the prompt
+      const uniqueTopics = filteredTopics.slice(0, 8);
+
       
       console.log("Matched topics:", uniqueTopics.map(t => `${t.title} (score: ${t.relevanceScore})`));
       console.log("=========================");
