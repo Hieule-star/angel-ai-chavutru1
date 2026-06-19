@@ -1216,13 +1216,16 @@ serve(async (req) => {
       }));
       
       // Filter out negative scores (Buddhist content when asking about Father Universe)
-      const filteredTopics = scoredTopics.filter(t => t.relevanceScore >= 0);
+      // For non-Father queries, also drop zero-score topics (no phrase from query matched)
+      const filteredTopics = scoredTopics.filter(t =>
+        isFatherQuery ? t.relevanceScore >= 0 : t.relevanceScore > 0
+      );
       
-      // Sort by relevance score (highest first)
       filteredTopics.sort((a, b) => b.relevanceScore - a.relevanceScore);
       
-      // Take top 20 topics
-      const uniqueTopics = filteredTopics.slice(0, 20);
+      // Tighter top-N to increase signal density in the prompt
+      const uniqueTopics = filteredTopics.slice(0, 8);
+
       
       console.log("Matched topics:", uniqueTopics.map(t => `${t.title} (score: ${t.relevanceScore})`));
       console.log("=========================");
