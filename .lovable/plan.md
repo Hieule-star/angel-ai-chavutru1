@@ -1,34 +1,63 @@
-## Vấn đề
-User hỏi "cho tôi bài thiền 9 tầng tự do" → Angel trả lời "không có thông tin", dù bài **"Tự Do Tuyệt Đối — 9 Tầng Tự Do Cha Vũ Trụ Ban Tặng"** đã có sẵn trong `knowledge_topics`.
+## Mục tiêu
+Khi user hỏi "bài thiền 9 tầng tự do" — hoặc các biến thể như "chín tầng tự do", "bài giảng về tự do", "9 layers of freedom", "thiền giải phóng tâm hồn" — Angel phải tìm đúng bài **"Tự Do Tuyệt Đối — 9 Tầng Tự Do Cha Vũ Trụ Ban Tặng"** trong `knowledge_topics`.
 
-## Nguyên nhân
-Trong `supabase/functions/angel-ai/index.ts` (phần RAG, dòng ~1037–1125):
-- Việc tìm kiếm chỉ chạy theo **danh sách keyword cứng** (`thiền`, `fun ecosystem`, `camly`, `mantra`…). Cụm khóa "tự do", "9 tầng", "tuyệt đối" KHÔNG có trong danh sách.
-- Với truy vấn này, chỉ keyword `thiền` được dùng — nhưng nội dung bài lại nói về "tự do", không chắc chứa từ "thiền" → không match.
-- Fallback "general topics" chỉ lấy 15 bản ghi đầu không có thứ tự, nên bài mới có thể bị bỏ qua.
+## Tình trạng hiện tại
+Sau bước cải thiện trước, RAG đã:
+- Trích cụm 1–2 từ động từ câu hỏi (sau khi bỏ stopwords) và `ilike` trên `title` + `content`.
+- Thêm các keyword cứng: `tự do`, `tầng`, `tuyệt đối`, `sám hối`, `biết ơn`, `kingdom`, `tuyên ngôn`.
+- Fallback lấy 20 bài mới nhất theo `created_at desc`.
 
-## Giải pháp
-Bổ sung một bước **tìm kiếm theo cụm từ trực tiếp từ câu hỏi người dùng**, chạy SONG SONG với keyword search hiện tại — không thay thế logic cũ để tránh ảnh hưởng các luồng đã hoạt động tốt.
+Vẫn còn yếu khi:
+- User viết số bằng chữ ("chín tầng") thay vì "9 tầng".
+- User dùng từ đồng nghĩa ("giải phóng", "tự tại", "freedom").
+- User viết tiếng Anh ("9 layers of freedom meditation").
+- Có dấu / không dấu ("tu do tuyet doi") — Postgres `ilike` không bỏ dấu.
 
-### Thay đổi trong `supabase/functions/angel-ai/index.ts` (nhánh `else` của `isFatherQuery`)
+## Giải pháp (3 lớp, không cần embedding)
 
-1. **Trích cụm từ ý nghĩa từ câu hỏi**:
-   - Bỏ stopwords tiếng Việt phổ biến (`cho`, `tôi`, `bài`, `của`, `là`, `và`, `con`, `muốn`, `xin`, `ơi`…).
-   - Lấy các từ còn ≥ 2 ký tự, ghép thành các cụm 1–2 từ liên tiếp (n-gram).
-   - Ví dụ: "cho tôi bài thiền 9 tầng tự do" → `["thiền", "9 tầng", "tầng tự", "tự do", "thiền 9", "9", "tầng", "tự", "do"]` (lọc trùng, bỏ token quá ngắn/số đơn lẻ).
+### Lớp 1 — Chuẩn hoá truy vấn
+Trong `supabase/functions/angel-ai/index.ts`, viết hàm `normalizeQuery(text)`:
+- Lowercase, bỏ dấu tiếng Việt (`removeDiacritics`).
+- Map số bằng chữ → chữ số: `một→1, hai→2, ba→3, … chín→9, mười→10`.
+- Map từ đồng nghĩa cốt lõi (bảng tĩnh nhỏ, dễ mở rộng):
+  - `freedom/liberation/giải phóng/tự tại → tự do`
+  - `layer/level/cấp/bậc → tầng`
+  - `absolute/tuyệt đối/hoàn toàn → tuyệt đối`
+  - `meditation/dẫn thiền → thiền`
+  - `repent/sám hối → sám hối`
+  - `gratitude/biết ơn → biết ơn`
+- Trả về cả phiên bản có dấu lẫn không dấu để dùng cho các bước sau.
 
-2. **Tìm theo từng cụm**: dùng `ilike` trên `title` và `content`, giới hạn 5 kết quả mỗi cụm. Gộp vào `allTopics` (đã có dedupe bằng `existingIds`).
+### Lớp 2 — Sinh tập "candidate phrases"
+Từ truy vấn đã chuẩn hoá:
+- Bỏ stopwords (mở rộng danh sách hiện có với cả từ tiếng Anh `the/of/for/a/about/please/show/give/me/i/want`).
+- Sinh unigram + bigram + trigram (≤ 12 cụm, ưu tiên cụm dài).
+- Với mỗi cụm, sinh kèm phiên bản không dấu để match bài có/không dấu.
+- Bơm thêm các keyword đã được map đồng nghĩa.
 
-3. **Bổ sung từ khóa thiền vào danh sách hiện tại**: thêm `'tự do'`, `'9 tầng'`, `'sám hối'`, `'biết ơn'` vào nhóm trigger khi message có `thiền`/`meditation` hoặc `tự do` — giúp bắt nhanh bài này và các bài cùng dòng.
+### Lớp 3 — Truy vấn & xếp hạng
+1. Với mỗi cụm, chạy `ilike` trên `title` (trọng số ×3), `description` (×2), `content` (×1), giới hạn 8 kết quả mỗi cụm. Gộp dedupe.
+2. Khi đếm điểm trong `calculateRelevanceScore` (hoặc viết lớp scoring nhẹ bao quanh), cộng điểm theo:
+   - Số cụm khác nhau từ truy vấn xuất hiện trong title (cộng cao nhất).
+   - Số cụm xuất hiện trong description.
+   - Số cụm xuất hiện trong content (đếm khác nhau, không đếm tần suất để tránh thiên vị bài dài).
+   - Bonus nếu cả "tự do" + "tầng" + một số (1–9) cùng xuất hiện → ép bài "9 tầng tự do" lên top.
+3. Loại bài có điểm 0 sau scoring (không có cụm nào của user xuất hiện) trước khi đưa vào prompt — tránh nhiễu.
+4. Giữ top 8 bài cho prompt (giảm từ 20 → 8 để tăng tỉ trọng tín hiệu).
 
-4. **Cải thiện fallback general**: order `created_at desc` thay vì lấy ngẫu nhiên 15 bản ghi đầu, để bài mới luôn có cơ hội lọt vào pool scoring.
+### Lớp 4 — Log để dễ debug
+- `console.log` truy vấn gốc, truy vấn chuẩn hoá, danh sách phrase, top 10 bài kèm điểm.
+- Hữu ích khi user báo "Angel không tìm thấy bài X".
 
-Không thay đổi `calculateRelevanceScore`, không thay đổi schema, không thay đổi UI. Chỉ mở rộng nguồn ứng viên cho bước scoring.
+## File thay đổi
+- `supabase/functions/angel-ai/index.ts` — chỉ chỉnh phần RAG (nhánh non-Father-query), thêm 2 helper `normalizeQuery` và `removeDiacritics` ở đầu file. Không đụng schema, không đụng UI, không đụng các hàm khác.
 
-## Kiểm thử
-Sau khi deploy, hỏi lại:
-- "cho tôi bài thiền 9 tầng tự do"
-- "tự do tuyệt đối là gì"
-- "9 tầng tự do cha vũ trụ"
+## Kiểm thử thủ công sau khi deploy
+Hỏi lần lượt và kỳ vọng Angel trả lời dựa trên bài "9 Tầng Tự Do":
+1. "cho tôi bài thiền 9 tầng tự do"
+2. "bài giảng chín tầng tự do của Cha"
+3. "tu do tuyet doi la gi" (không dấu)
+4. "9 layers of freedom meditation"
+5. "thiền giải phóng tâm hồn"
 
-Kỳ vọng: Angel trả lời dựa trên bài "Tự Do Tuyệt Đối — 9 Tầng Tự Do Cha Vũ Trụ Ban Tặng" và liệt kê được 9 tầng.
+Nếu (5) vẫn không match (vì không có từ "tự do" trực tiếp), đó là giới hạn chấp nhận được của RAG không-embedding — bước nâng cấp tiếp theo sẽ là vector embedding (đề xuất riêng khi cần).
