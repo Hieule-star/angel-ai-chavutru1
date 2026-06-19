@@ -1086,14 +1086,44 @@ serve(async (req) => {
         if (lowerMessage.includes('thần chú') || lowerMessage.includes('mantra')) {
           searchKeywords.push('thần chú', 'mantra');
         }
+        if (lowerMessage.includes('tự do') || lowerMessage.includes('tầng')) {
+          searchKeywords.push('tự do', 'tầng', 'tuyệt đối');
+        }
+        if (lowerMessage.includes('sám hối')) searchKeywords.push('sám hối');
+        if (lowerMessage.includes('biết ơn')) searchKeywords.push('biết ơn');
+        if (lowerMessage.includes('kingdom') || lowerMessage.includes('tuyên ngôn')) {
+          searchKeywords.push('kingdom', 'tuyên ngôn');
+        }
         
-        if (searchKeywords.length > 0) {
-          for (const keyword of searchKeywords) {
+        // ==== Dynamic phrase extraction from user message ====
+        const STOPWORDS = new Set([
+          'cho','tôi','toi','bài','bai','của','cua','là','la','và','va','con','muốn','muon',
+          'xin','ơi','oi','một','mot','các','cac','này','nay','đó','do','được','duoc','ạ','a',
+          'với','voi','về','ve','cần','can','hay','thì','thi','mình','minh','bạn','ban','nhé','nhe',
+          'gì','gi','như','nhu','để','de','khi','nào','nao','rồi','roi','đi','di','ở','o',
+          'có','co','không','khong','sẽ','se','đã','da','vào','vao','ra','lên','len','xuống','xuong',
+          'the','a','an','of','to','for','in','is','it','i','me','my','please','can','you','what','how',
+        ]);
+        const cleanMsg = lowerMessage.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+        const tokens = cleanMsg.split(' ').filter(t => t.length >= 2 && !STOPWORDS.has(t) && !/^\d+$/.test(t));
+        const phrases = new Set<string>(tokens);
+        for (let i = 0; i < tokens.length - 1; i++) {
+          phrases.add(`${tokens[i]} ${tokens[i + 1]}`);
+        }
+        // Prioritize multi-word phrases first
+        const phraseList = Array.from(phrases).sort((a, b) => b.length - a.length).slice(0, 12);
+        
+        const allSearchTerms = Array.from(new Set([...searchKeywords, ...phraseList]));
+        
+        if (allSearchTerms.length > 0) {
+          for (const term of allSearchTerms) {
+            const safe = term.replace(/[,()]/g, ' ').trim();
+            if (!safe) continue;
             const { data: keywordMatches } = await supabase
               .from("knowledge_topics")
               .select("id, title, description, content, category, audio_url")
-              .or(`title.ilike.%${keyword}%,content.ilike.%${keyword}%`)
-              .limit(10);
+              .or(`title.ilike.%${safe}%,content.ilike.%${safe}%`)
+              .limit(8);
             
             if (keywordMatches) {
               const existingIds = new Set(allTopics.map(t => t.id));
@@ -1106,23 +1136,25 @@ serve(async (req) => {
           }
         }
         
-        // Fill with general topics if needed
+        // Fill with most recent general topics if needed
         if (allTopics.length < 10) {
           const { data: generalTopics } = await supabase
             .from("knowledge_topics")
             .select("id, title, description, content, category, audio_url")
-            .limit(15);
+            .order('created_at', { ascending: false })
+            .limit(20);
           
           if (generalTopics) {
             const existingIds = new Set(allTopics.map(t => t.id));
             for (const topic of generalTopics) {
-              if (!existingIds.has(topic.id) && allTopics.length < 20) {
+              if (!existingIds.has(topic.id) && allTopics.length < 25) {
                 allTopics.push(topic);
               }
             }
           }
         }
       }
+
       
       // ==== SCORE AND FILTER TOPICS ====
       console.log("=== RELEVANCE SCORING ===");
