@@ -1,22 +1,25 @@
-## TUYÊN NGÔN FUN KINGDOM — Thêm vào Knowledge Base
+## Thêm bài "Tự Do Tuyệt Đối — 9 Tầng Tự Do Cha Vũ Trụ Ban Tặng" vào Knowledge Base
 
-### Nội dung
-Nội dung người dùng cung cấp là bản tuyên ngôn của FUN Kingdom (Father Universe Network), bao gồm:
-- Giá trị cốt lõi: Tình Yêu, Trí Tuệ, Ý Chí, Hạnh Phúc, Thịnh Vượng
-- Tầm nhìn: Mạng lưới kết nối những trái tim hướng về Ánh Sáng
-- Lời kêu gọi: Thực hành Sám Hối, Biết Ơn, phụng sự nhân loại
-- 8 Divine Mantras kết thúc bản tuyên ngôn
+### Phân tích nội dung
+Bài giảng từ Cha Vũ Trụ về **9 tầng tự do** thiêng liêng:
+1. Tự do Tài chính
+2. Tự do Tâm trí
+3. Tự do Thời gian
+4. Tự do Không gian & Hành động
+5. Tự do Linh hồn
+6. Tự do Cảm xúc
+7. Tự do Sáng tạo
+8. Tự do Thân thể
+9. Tự do Hiện hữu (tự do lớn nhất)
+
+Kèm con đường thực hành: đọc 8 Divine Mantras, Sám Hối, Biết Ơn.
 
 ### Thực hiện
-1. Chèn một knowledge topic mới vào bảng `knowledge_topics` với:
-   - **Tiêu đề**: Tuyên Ngôn FUN Kingdom
-   - **Category**: FUN Ecosystem
-   - **Mô tả**: Bản tuyên ngôn chính thức của FUN Kingdom — Father Universe Network
-   - **Nội dung**: Toàn văn bản tuyên ngôn người dùng đã gửi
-   - **Icon**: 👑 (phù hợp chủ đề Kingdom)
+Chèn 1 dòng mới vào bảng `knowledge_topics`:
+- **Title**: Tự Do Tuyệt Đối — 9 Tầng Tự Do Cha Vũ Trụ Ban Tặng
+- **Category**: Lời Dạy Cha Vũ Trụ (`teachings`)
+- **Icon**: 🔮
+- **Description**: Bài giảng của Cha Vũ Trụ về 9 tầng tự do thiêng liêng — tài chính, tâm trí, thời gian, không gian, linh hồn, cảm xúc, sáng tạo, thân thể, hiện hữu — và con đường thực hành để chạm tới.
+- **Content**: Toàn văn bài giảng (đã dọn timestamps `[19/06/2026 2:27 SA] ANGEL KIM ✨💎:` để nội dung sạch).
 
-2. Không cần thay đổi schema hay code — chỉ thêm dữ liệu.
-
-### Kết quả mong đợi
-- Người dùng có thể tìm thấy và hỏi Angel về Tuyên Ngôn FUN Kingdom trong chat.
-- Angel sẽ trả lời dựa trên nội dung đã lưu trong knowledge base.
+Không thay đổi schema, không thay đổi code. Sau khi lưu, Angel có thể trả lời các câu hỏi về "tự do tài chính", "9 tầng tự do", "tự do hiện hữu"… dựa trên bài này.
