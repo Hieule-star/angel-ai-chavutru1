@@ -118,6 +118,39 @@ export type Database = {
           },
         ]
       }
+      app_key_audit_log: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          created_at: string
+          id: string
+          ip_address: string | null
+          key_fingerprint: string
+          masked_key: string
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          key_fingerprint: string
+          masked_key: string
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          key_fingerprint?: string
+          masked_key?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       chat_history: {
         Row: {
           created_at: string | null
