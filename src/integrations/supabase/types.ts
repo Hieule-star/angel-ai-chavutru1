@@ -217,6 +217,44 @@ export type Database = {
         }
         Relationships: []
       }
+      fun_api_sync_log: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          request_payload: Json | null
+          response_payload: Json | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          request_payload?: Json | null
+          response_payload?: Json | null
+          status: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          request_payload?: Json | null
+          response_payload?: Json | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fun_api_sync_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       generated_images: {
         Row: {
           created_at: string
@@ -346,33 +384,48 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          country: string | null
           created_at: string | null
           display_name: string | null
           email: string | null
+          fun_id: string | null
           id: string
+          language: string | null
           light_points: number | null
           onboarding_completed: boolean | null
+          synced_with_fun_api_at: string | null
           updated_at: string | null
+          username: string | null
         }
         Insert: {
           avatar_url?: string | null
+          country?: string | null
           created_at?: string | null
           display_name?: string | null
           email?: string | null
+          fun_id?: string | null
           id: string
+          language?: string | null
           light_points?: number | null
           onboarding_completed?: boolean | null
+          synced_with_fun_api_at?: string | null
           updated_at?: string | null
+          username?: string | null
         }
         Update: {
           avatar_url?: string | null
+          country?: string | null
           created_at?: string | null
           display_name?: string | null
           email?: string | null
+          fun_id?: string | null
           id?: string
+          language?: string | null
           light_points?: number | null
           onboarding_completed?: boolean | null
+          synced_with_fun_api_at?: string | null
           updated_at?: string | null
+          username?: string | null
         }
         Relationships: []
       }
