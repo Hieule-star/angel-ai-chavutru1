@@ -55,6 +55,15 @@ export const knowledgeTopics: KnowledgeTopic[] = [
     category: 'Rewards',
     created_at: '2024-01-01',
   },
+  {
+    id: '7',
+    title: 'Luật Công Dân FUN Kingdom',
+    description: 'Hiến chương về quyền, bổn phận và lộ trình của Công Dân FUN Kingdom — Món Quà Thiêng Liêng của Cha Vũ Trụ',
+    content: 'Luật Công Dân FUN Kingdom gồm 8 chương và Lời Tuyên Thệ Công Dân. Chương I–II: Mục đích tối thượng và bản chất công dân (tự do ý chí, đồng sáng tạo). Chương III: Bốn trụ cột thiên ý — Ánh Sáng, Ý Chí, Trí Tuệ, Tình Yêu; giá trị trước phần thưởng; thịnh vượng nội tâm. Chương IV: Tài sản là món quà từ Cha, mọi người là Steward được trao phó gìn giữ và lan tỏa. Chương V: Điều kiện trở thành công dân và con đường tỉnh thức. Chương VI: Quyền nhận lãnh & đồng sáng tạo, trách nhiệm chung. Chương VII: Lộ trình phát triển từ Citizen → Guardian of Light và Công Dân Số. Chương VIII: Nhân loại một gia đình, nền văn minh ánh sáng, tinh thần chuyển hóa.',
+    icon: '👑',
+    category: 'FUN Kingdom',
+    created_at: '2026-06-21',
+  },
 ];
 
 export const suggestedQuestions = [
