@@ -64,6 +64,15 @@ export const knowledgeTopics: KnowledgeTopic[] = [
     category: 'FUN Kingdom',
     created_at: '2026-06-21',
   },
+  {
+    id: '8',
+    title: 'Nội Quy Cộng Đồng FUN Ecosystem',
+    description: 'Quy tắc cộng đồng Web3 Ánh Sáng — văn minh, tích cực, lan tỏa Ánh Sáng',
+    content: 'Nội Quy Cộng Đồng FUN Ecosystem (Bản Ngắn) — Chào mừng bạn đến với cộng đồng Web3 Ánh Sáng. Để giữ cộng đồng văn minh và tích cực, xin thực hành: (1) Nói tích cực — nâng người khác lên. (2) Không phàn nàn, không phán xét. Chỉ Sám Hối & Biết Ơn. (3) Nếu nói vấn đề → luôn kèm giải pháp và hướng xây dựng. (4) Mỗi thành viên là một "Node Ánh Sáng" lan tỏa văn minh. (5) FUN Ecosystem = Web3 của Tình Yêu Thuần Khiết & Tâm Thức. Free to Join. Free to Use. Earn Together. Mantra mỗi ngày: "I am Love. I am Light. I repent. I am grateful."',
+    icon: '🌞',
+    category: 'FUN Kingdom',
+    created_at: '2026-06-21',
+  },
 ];
 
 export const suggestedQuestions = [
