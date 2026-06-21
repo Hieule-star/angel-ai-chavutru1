@@ -67,20 +67,24 @@ export default function Knowledge() {
     return counts;
   }, [topics]);
 
-  // Filter topics by search and category
+  // Filter topics by search and category (search includes content body)
   const filteredTopics = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
     return topics.filter((topic) => {
-      const matchesSearch = !searchQuery || 
-        topic.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        topic.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        topic.category.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesCategory = !selectedCategory || 
+      const matchesSearch = !q ||
+        topic.title.toLowerCase().includes(q) ||
+        topic.description.toLowerCase().includes(q) ||
+        topic.category.toLowerCase().includes(q) ||
+        topic.content.toLowerCase().includes(q);
+
+      const matchesCategory = !selectedCategory ||
         topic.category.toLowerCase() === selectedCategory.toLowerCase();
-      
+
       return matchesSearch && matchesCategory;
     });
   }, [topics, searchQuery, selectedCategory]);
+
+  const QUICK_KEYWORDS = ['Stewardship', 'Ánh Sáng', 'Tuyên thệ Công Dân', 'Divine Mantras', 'Tình Yêu'];
 
   // Group topics by category for display
   const groupedTopics = useMemo(() => {
