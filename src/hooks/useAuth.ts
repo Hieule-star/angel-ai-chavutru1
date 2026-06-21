@@ -12,12 +12,19 @@ export function useAuth() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
-        
+
         if (session?.user) {
           // Defer profile fetch to avoid deadlock
           setTimeout(() => {
             fetchProfile(session.user.id);
           }, 0);
+
+          if (event === 'SIGNED_IN') {
+            // Best-effort sync with FUN core platform
+            setTimeout(() => {
+              triggerFunApiSync(session.user.id);
+            }, 100);
+          }
         } else {
           setUser(null);
         }
@@ -29,12 +36,35 @@ export function useAuth() {
       setSession(session);
       if (session?.user) {
         fetchProfile(session.user.id);
+        setTimeout(() => triggerFunApiSync(session.user.id), 100);
       }
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const triggerFunApiSync = async (userId: string, attempt = 1) => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('fun_id')
+        .eq('id', userId)
+        .maybeSingle();
+      if (profile?.fun_id) return;
+
+      const { data, error } = await supabase.functions.invoke('fun-api-sync-user');
+      if (error || !(data as any)?.ok) {
+        if (attempt < 2) {
+          setTimeout(() => triggerFunApiSync(userId, attempt + 1), 5000);
+        } else {
+          console.warn('[fun-api-sync-user] failed:', error || (data as any)?.error);
+        }
+      }
+    } catch (err) {
+      console.warn('[fun-api-sync-user] exception:', err);
+    }
+  };
 
   const fetchProfile = async (userId: string) => {
     const { data: profile, error } = await supabase
@@ -59,6 +89,7 @@ export function useAuth() {
       });
     }
   };
+
 
   const signUp = async (email: string, password: string, displayName?: string) => {
     const redirectUrl = `${window.location.origin}/`;
