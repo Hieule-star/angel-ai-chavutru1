@@ -35,7 +35,29 @@ Deno.serve(async (req) => {
     if (claimsError || !claimsData?.claims?.sub) {
       return jsonResponse({ ok: false, error: "Unauthorized" }, 401);
     }
-    const userId = claimsData.claims.sub as string;
+    const callerId = claimsData.claims.sub as string;
+
+    // Optional admin override: { target_user_id }
+    let targetUserId: string | null = null;
+    try {
+      const body = await req.clone().json().catch(() => null);
+      if (body && typeof body.target_user_id === "string") {
+        targetUserId = body.target_user_id;
+      }
+    } catch { /* ignore */ }
+
+    const adminPre = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    let userId = callerId;
+    if (targetUserId && targetUserId !== callerId) {
+      const { data: isAdmin } = await adminPre.rpc("has_role", {
+        _user_id: callerId,
+        _role: "admin",
+      });
+      if (!isAdmin) {
+        return jsonResponse({ ok: false, error: "Forbidden" }, 403);
+      }
+      userId = targetUserId;
+    }
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
