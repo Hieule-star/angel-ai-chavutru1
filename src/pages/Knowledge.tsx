@@ -137,12 +137,50 @@ export default function Knowledge() {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search for wisdom..."
+                placeholder="Tìm theo từ khóa: Stewardship, Ánh Sáng, Tuyên thệ Công Dân…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3.5 bg-white/90 backdrop-blur-sm border border-border/50 rounded-2xl focus:outline-none focus:border-primary/50 focus:shadow-lg transition-all text-foreground placeholder:text-muted-foreground"
+                className="w-full pl-12 pr-12 py-3.5 bg-white/90 backdrop-blur-sm border border-border/50 rounded-2xl focus:outline-none focus:border-primary/50 focus:shadow-lg transition-all text-foreground placeholder:text-muted-foreground"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Xóa tìm kiếm"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
+
+            {/* Quick keyword chips */}
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-3 max-w-2xl mx-auto">
+              <span className="text-xs text-muted-foreground">Gợi ý:</span>
+              {QUICK_KEYWORDS.map((kw) => (
+                <button
+                  key={kw}
+                  type="button"
+                  onClick={() => setSearchQuery(kw)}
+                  className={`text-xs px-3 py-1 rounded-full border transition-all ${
+                    searchQuery.toLowerCase() === kw.toLowerCase()
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-white/70 text-muted-foreground border-border/50 hover:text-foreground hover:border-primary/40'
+                  }`}
+                >
+                  {kw}
+                </button>
+              ))}
+            </div>
+
+            {/* Result count */}
+            {(searchQuery || selectedCategory) && !isLoading && (
+              <p className="text-center text-xs text-muted-foreground mt-3">
+                {filteredTopics.length} kết quả
+                {searchQuery && <> cho "<span className="text-foreground font-medium">{searchQuery}</span>"</>}
+                {selectedCategory && <> trong <span className="text-foreground font-medium">{selectedCategory}</span></>}
+              </p>
+            )}
           </motion.div>
 
           {/* Category Tabs */}
