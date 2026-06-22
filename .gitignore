@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Codex CLI local config
+.codex/config.toml
+.env.codex

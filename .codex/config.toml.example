@@ -1,0 +1,17 @@
+# Copy this file to ~/.codex/config.toml (global) or .codex/config.toml (per-project, gitignored)
+# Docs: https://github.com/openai/codex
+
+model = "gpt-5-codex"
+approval_policy = "on-request"      # ask before running state-changing commands
+sandbox_mode = "workspace-write"    # only allow writes inside the repo
+
+# Supabase MCP server (read-only). Create a PAT at Supabase Dashboard → Account → Access Tokens.
+[mcp_servers.supabase]
+command = "npx"
+args = [
+  "-y",
+  "@supabase/mcp-server-supabase@latest",
+  "--read-only",
+  "--project-ref=sasbfslupxdsaqifnqzx",
+]
+env = { SUPABASE_ACCESS_TOKEN = "REPLACE_WITH_YOUR_SUPABASE_PAT" }
