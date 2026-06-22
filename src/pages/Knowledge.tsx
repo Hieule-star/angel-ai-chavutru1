@@ -24,17 +24,7 @@ export default function Knowledge() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Route protection - redirect non-admin users to /chat
-  useEffect(() => {
-    if (!adminLoading && !isAdmin) {
-      toast({
-        title: "Cần quyền truy cập",
-        description: "Trang Knowledge Base cần quyền quản trị viên để truy cập.",
-        variant: "destructive",
-      });
-      navigate('/chat');
-    }
-  }, [isAdmin, adminLoading, navigate, toast]);
+  // Knowledge Base is public - all users can browse topics
 
   const handleCopyContent = async () => {
     if (!selectedTopic) return;
