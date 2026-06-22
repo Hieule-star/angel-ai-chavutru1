@@ -71,7 +71,20 @@ bun run lint && bun run build
 - KHÔNG check admin status từ localStorage/sessionStorage — phải qua `has_role()` server-side.
 - Không hardcode credentials trong code.
 
+## Codex CLI environment
+
+Codex CLI thường được chạy local với:
+- `~/.codex/config.toml` — model + `[mcp_servers.supabase]` (read-only). Xem `.codex/config.toml.example`.
+- `~/.env.codex` — `PG*` env vars cho role `codex_readonly`. Xem `.env.codex.example`.
+- Source `~/.env.codex` trước khi gọi `codex` để psql + Codex cùng đọc được biến môi trường.
+
+DB access từ Codex:
+- Đọc: `psql -c "SELECT ..."` (role read-only, schema `public`) hoặc MCP tool `execute_sql`.
+- Ghi/DDL: chỉ tạo file trong `supabase/migrations/`, KHÔNG chạy trực tiếp.
+
 ## Tài liệu tham khảo
 - Lovable docs: https://docs.lovable.dev
 - Supabase docs: https://supabase.com/docs
 - shadcn-ui: https://ui.shadcn.com
+- Codex CLI: https://github.com/openai/codex
+
