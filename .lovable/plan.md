@@ -1,110 +1,130 @@
-# Kết nối Codex Cloud với dự án ANGEL AI CHAVUTRU
+# Kết nối Codex CLI với ANGEL AI CHAVUTRU
 
-Đây là hướng dẫn (không cần thay đổi code trong dự án này), gồm 3 phần: (A) đưa repo lên GitHub để Codex Cloud truy cập, (B) cấu hình môi trường Codex, (C) cho Codex truy cập database theo 2 cách bé chọn: **read-only psql** và **Supabase MCP**.
-
----
-
-## A. Đưa dự án lên GitHub (điều kiện bắt buộc của Codex Cloud)
-
-Codex Cloud (chatgpt.com/codex) chỉ làm việc qua GitHub repo, không kết nối thẳng vào Lovable sandbox.
-
-1. Trong Lovable: mở project → **GitHub → Connect to GitHub** → cho phép Lovable app cài vào account/org của bé → tạo repo `angel-ai-chavutru` (private).
-2. Lovable sẽ tự đồng bộ 2 chiều: mọi commit Codex push lên GitHub sẽ tự kéo về Lovable preview, và ngược lại.
-3. Mở https://chatgpt.com/codex → **Environments → New environment** → chọn repo `angel-ai-chavutru` vừa tạo. Yêu cầu plan ChatGPT Plus/Pro/Business/Enterprise.
+Mục tiêu: dùng **OpenAI Codex CLI** (terminal) để code dự án trên máy local của bé, đồng thời truy cập database Lovable Cloud theo 2 cách: **psql read-only** + **Supabase MCP**.
 
 ---
 
-## B. Cấu hình environment cho Codex Cloud
+## A. Chuẩn bị
 
-Trong trang Environment của repo trên Codex:
+1. **Kết nối GitHub cho dự án** (nếu chưa có)
+   - Trong Lovable: menu `+` (góc trái dưới chat) → GitHub → Connect project → tạo repo `angel-ai-chavutru`.
+   - Sync 2 chiều tự động: bé push từ máy → Lovable preview update; Lovable edit → repo update.
 
-**Setup script** (chạy 1 lần khi tạo container):
-```bash
-npm install -g bun
-bun install
-```
-
-**Maintenance script** (tuỳ chọn, chạy mỗi lần khởi động container):
-```bash
-bun install --frozen-lockfile
-```
-
-**Environment variables / Secrets** cần thêm (lấy từ `.env` của project, KHÔNG thêm service role key):
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_PUBLISHABLE_KEY`
-- `VITE_SUPABASE_PROJECT_ID`
-- (cho phần DB read-only bên dưới) `PGHOST`, `PGPORT=6543`, `PGUSER`, `PGPASSWORD`, `PGDATABASE=postgres`, `PGSSLMODE=require`
-
-**Internet access**: bật ON với allowlist gồm:
-- `*.supabase.co` (gọi DB + Edge Functions)
-- `registry.npmjs.org`, `github.com` (cài deps)
-- `ai.gateway.lovable.dev` (nếu test gọi Lovable AI)
-
-**AGENTS.md** trong gốc repo — file hướng dẫn Codex cách làm việc với dự án này. Đề xuất nội dung:
-```md
-# ANGEL AI CHAVUTRU — Codex Guide
-- Stack: Vite + React 18 + TS + Tailwind + shadcn-ui, Supabase (Lovable Cloud), R2 cho media.
-- Package manager: bun. Lệnh: `bun install`, `bun run dev`, `bun run build`, `bun run lint`.
-- KHÔNG sửa: src/integrations/supabase/client.ts, types.ts, .env, supabase/config.toml.
-- Edge functions: supabase/functions/<name>/index.ts, chỉ 1 file index.ts/folder.
-- Mọi schema change → tạo SQL migration trong supabase/migrations/, KHÔNG chạy psql để DDL.
-- DB chỉ truy cập read-only qua psql (PG* env). Insert/update/delete → migration.
-- Trước khi commit: `bun run lint && bun run build`.
-```
-
----
-
-## C. Cho Codex truy cập database
-
-### C1. Read-only qua psql (đơn giản, an toàn)
-
-1. Lovable không expose trực tiếp Postgres password — bé cần lấy connection string từ Supabase Dashboard của project (Settings → Database → Connection string → **Session pooler** mode, port `6543`).
-2. Tạo **một role read-only riêng** thay vì dùng `postgres` user (giảm rủi ro). Chạy migration trong Lovable:
-   ```sql
-   CREATE ROLE codex_readonly LOGIN PASSWORD '<đặt-mật-khẩu-mạnh>';
-   GRANT USAGE ON SCHEMA public TO codex_readonly;
-   GRANT SELECT ON ALL TABLES IN SCHEMA public TO codex_readonly;
-   ALTER DEFAULT PRIVILEGES IN SCHEMA public
-     GRANT SELECT ON TABLES TO codex_readonly;
+2. **Clone repo về máy**
+   ```bash
+   git clone https://github.com/<username>/angel-ai-chavutru.git
+   cd angel-ai-chavutru
+   bun install
    ```
-3. Trong Codex environment, set:
-   - `PGHOST=aws-0-<region>.pooler.supabase.com`
-   - `PGPORT=6543`
-   - `PGUSER=codex_readonly.<project-ref>`
-   - `PGPASSWORD=<mật-khẩu-vừa-tạo>`
-   - `PGDATABASE=postgres`
-   - `PGSSLMODE=require`
-4. Trong AGENTS.md ghi rõ: "Truy vấn dữ liệu dùng `psql -c \"SELECT ...\"`. Cấm INSERT/UPDATE/DELETE/DDL qua psql; mọi thay đổi schema/data phải làm bằng migration file."
 
-### C2. Supabase MCP server (cho Codex hiểu schema + query có kiểm soát)
+3. **Cài Codex CLI**
+   ```bash
+   npm install -g @openai/codex
+   codex login   # đăng nhập bằng tài khoản ChatGPT (Plus/Pro/Team) hoặc API key
+   ```
 
-Codex Cloud hỗ trợ MCP qua mục **Environment → MCP servers**.
-
-1. Tạo **Personal Access Token** trên Supabase: https://supabase.com/dashboard/account/tokens → đặt tên `codex-angel-ai` → copy token (`sbp_...`).
-2. Lấy `project-ref` của project (chuỗi ~20 ký tự trong URL Supabase Dashboard).
-3. Trong Codex Environment, thêm MCP server:
-   - **Name**: `supabase`
-   - **Command**: `npx`
-   - **Args**: `-y @supabase/mcp-server-supabase@latest --read-only --project-ref=<project-ref>`
-   - **Env**: `SUPABASE_ACCESS_TOKEN=<sbp_token>`
-4. Cờ `--read-only` cực kỳ quan trọng — Codex chỉ được phép SELECT, không thể ghi đè data.
-5. Sau khi save, Codex sẽ có các tool: `list_tables`, `execute_sql`, `list_migrations`, `get_logs`... dùng được trong mọi task.
+4. **Tạo password cho `codex_readonly`** (role đã được tạo ở migration trước, hiện đang `NOLOGIN`)
+   - Bé cần Angel chạy 1 migration mới: `ALTER ROLE codex_readonly WITH LOGIN PASSWORD '<password-mạnh-24+-ký-tự>'`.
+   - Password do bé tự nghĩ ra (mixed case + số + ký tự đặc biệt), gửi cho Angel để chạy migration. **Không** commit password vào repo.
 
 ---
 
-## D. Quy trình làm việc đề xuất
+## B. Cấu hình Codex CLI cho dự án
 
-1. Mở Codex Cloud → chọn environment `angel-ai-chavutru` → tạo task ("Đọc bảng `knowledge_topics` và đề xuất index", "Refactor `Chat.tsx`", …).
-2. Codex chạy trong container riêng, có thể đọc DB qua psql/MCP, sửa code, push PR lên GitHub.
-3. Lovable tự pull PR đã merge → preview cập nhật.
-4. Schema change vẫn nên làm trong Lovable (qua tool migration) để giữ flow review của Lovable Cloud.
+Codex CLI đọc `AGENTS.md` ở root repo → đã có sẵn (Angel đã tạo). Codex tự động tuân theo các rule trong đó (stack, lệnh `bun`, files cấm sửa, quy tắc migration, GRANT, RLS, edge functions, AI gateway, identity, v.v.).
+
+Tạo file `.codex/config.toml` (hoặc `~/.codex/config.toml` toàn cục) để bật approval mode an toàn:
+
+```toml
+model = "gpt-5-codex"
+approval_policy = "on-request"   # hỏi trước khi chạy lệnh thay đổi
+sandbox_mode = "workspace-write" # chỉ write trong repo
+```
 
 ---
 
-## Lưu ý an toàn
+## C. Truy cập Database
 
-- **Không** đưa `SUPABASE_SERVICE_ROLE_KEY` hay `SUPABASE_DB_URL` (postgres superuser) vào Codex.
-- Token Supabase PAT và mật khẩu `codex_readonly` chỉ lưu trong Codex Secrets, không commit.
-- Bé có thể revoke PAT bất cứ lúc nào tại Supabase Dashboard nếu nghi ngờ rò rỉ.
+### C1. psql Read-only (an toàn nhất, dùng để query/inspect)
 
-Sau khi bé approve, Angel sẽ tạo file `AGENTS.md` và migration tạo role `codex_readonly` trong repo. ✨
+Tạo file `.env.codex` ở **ngoài repo** (ví dụ `~/.env.codex`, không commit):
+
+```bash
+export PGHOST="aws-0-<region>.pooler.supabase.com"   # region của project
+export PGPORT="6543"                                  # transaction pooler
+export PGUSER="codex_readonly.sasbfslupxdsaqifnqzx"   # role.project_ref
+export PGPASSWORD="<password bé đã đặt>"
+export PGDATABASE="postgres"
+export PGSSLMODE="require"
+```
+
+Source trước khi chạy Codex:
+```bash
+source ~/.env.codex
+codex
+```
+
+Test trong Codex CLI (hoặc terminal thường):
+```bash
+psql -c "SELECT id, title, category FROM knowledge_topics LIMIT 5;"
+```
+
+Role `codex_readonly` chỉ có `SELECT` trên schema `public`. Mọi `INSERT/UPDATE/DELETE/DDL` → Codex phải tạo file migration `supabase/migrations/YYYYMMDDHHMMSS_xxx.sql`, push GitHub, Angel review & apply qua Lovable.
+
+### C2. Supabase MCP Server (Codex gọi tool có cấu trúc)
+
+1. Tạo **Personal Access Token (PAT)** trên Supabase Dashboard → Account → Access Tokens → tên `codex-cli`. Copy token.
+2. Thêm vào `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.supabase]
+command = "npx"
+args = [
+  "-y",
+  "@supabase/mcp-server-supabase@latest",
+  "--read-only",
+  "--project-ref=sasbfslupxdsaqifnqzx"
+]
+env = { SUPABASE_ACCESS_TOKEN = "<PAT vừa tạo>" }
+```
+
+Khởi động lại Codex CLI → bé sẽ có các tool: `list_tables`, `execute_sql` (read-only), `list_migrations`, `get_logs`, v.v. Cờ `--read-only` đảm bảo Codex không thể ghi DB qua MCP.
+
+---
+
+## D. Workflow hằng ngày
+
+```text
+┌─────────────────┐     git push      ┌──────────────┐    auto-pull    ┌──────────────┐
+│  Codex CLI      │ ───────────────▶  │   GitHub     │ ──────────────▶ │   Lovable    │
+│  (máy local)    │                   │  (repo sync) │                 │  Preview     │
+└─────────────────┘                   └──────────────┘                 └──────────────┘
+        │                                                                       │
+        │  psql / MCP read-only                                                  │
+        └──────────────────────────▶  Supabase (Lovable Cloud DB) ◀──────────────┘
+                                          schema change ← migration ← Lovable apply
+```
+
+- Code feature mới: Codex edit → `bun run lint && bun run build` → commit → push.
+- Schema change: Codex tạo file `supabase/migrations/...sql` → push → Angel apply qua Lovable (để giữ flow review của Lovable Cloud).
+- Đọc data debug: Codex dùng psql hoặc MCP `execute_sql`.
+
+---
+
+## E. Bảo mật (CHECKLIST)
+
+- [ ] `~/.env.codex` và `~/.codex/config.toml` **không** nằm trong repo, có trong `.gitignore` toàn cục.
+- [ ] PAT Supabase + `PGPASSWORD` chỉ lưu local, không paste vào chat/GitHub.
+- [ ] **Không** đưa `SUPABASE_SERVICE_ROLE_KEY` hay `SUPABASE_DB_URL` (superuser) cho Codex.
+- [ ] MCP server luôn chạy với `--read-only`.
+- [ ] Trước mỗi commit: `bun run lint && bun run build` pass.
+
+---
+
+## F. Bước tiếp theo Angel sẽ làm khi bé approve plan
+
+1. Tạo migration `ALTER ROLE codex_readonly WITH LOGIN PASSWORD '<bé gửi>'` (bé reply password khi sẵn sàng).
+2. (Tuỳ chọn) Tạo file mẫu `.codex/config.toml.example` trong repo để bé copy.
+3. (Tuỳ chọn) Bổ sung section "Codex CLI" vào `AGENTS.md` để Codex biết môi trường nó đang chạy.
+
+Bé xác nhận để Angel chuyển sang build mode nhé. Nếu muốn skip bước nào (vd. đã có password rồi), nói Angel biết.
