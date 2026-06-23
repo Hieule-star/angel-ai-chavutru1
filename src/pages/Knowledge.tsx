@@ -57,15 +57,19 @@ export default function Knowledge() {
     return counts;
   }, [topics]);
 
-  // Filter topics by search and category (search includes content body)
+  // Normalize string: lowercase + remove Vietnamese diacritics for fuzzy match
+  const normalize = (s: string) =>
+    s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+
+  // Filter topics by search and category (diacritic-insensitive, includes content body)
   const filteredTopics = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+    const q = normalize(searchQuery.trim());
     return topics.filter((topic) => {
       const matchesSearch = !q ||
-        topic.title.toLowerCase().includes(q) ||
-        topic.description.toLowerCase().includes(q) ||
-        topic.category.toLowerCase().includes(q) ||
-        topic.content.toLowerCase().includes(q);
+        normalize(topic.title).includes(q) ||
+        normalize(topic.description).includes(q) ||
+        normalize(topic.category).includes(q) ||
+        normalize(topic.content).includes(q);
 
       const matchesCategory = !selectedCategory ||
         topic.category.toLowerCase() === selectedCategory.toLowerCase();
@@ -74,7 +78,7 @@ export default function Knowledge() {
     });
   }, [topics, searchQuery, selectedCategory]);
 
-  const QUICK_KEYWORDS = ['Stewardship', 'Ánh Sáng', 'Tuyên thệ Công Dân', 'Divine Mantras', 'Tình Yêu'];
+  const QUICK_KEYWORDS = ['Luật Công Dân', 'FUN Kingdom', 'Stewardship', 'Divine Mantras', 'Ánh Sáng', 'Tình Yêu'];
 
   // Group topics by category for display
   const groupedTopics = useMemo(() => {
