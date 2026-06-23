@@ -58,13 +58,36 @@ bun run lint                # ESLint
 - Ngôn ngữ tích cực, light language: dùng `allowlist`, `safetySwitch` thay vì `blacklist`, `killSwitch`.
 - Pronoun system: xem `src/...` (adaptive Vietnamese pronouns).
 
+## Auto-deploy: hiểu đúng cơ chế
+
+> ⚠️ **Auto-deploy chỉ áp dụng khi sửa code QUA LOVABLE CHAT.** Push code trực tiếp từ GitHub / Codex CLI / local editor **KHÔNG** tự deploy backend.
+
+| Loại thay đổi | Sửa qua Lovable chat | Push từ ngoài (GitHub/Codex/local) |
+|---|---|---|
+| **Frontend** (`src/`, `public/`, `index.html`, Tailwind, Vite config) | ✅ Preview tự rebuild | ✅ Preview tự rebuild (Vite watcher pull code mới) |
+| **Edge functions** (`supabase/functions/*`) | ✅ Agent gọi `deploy_edge_functions` ngay trong turn | ❌ **KHÔNG tự deploy** — function ở Supabase vẫn là bản cũ |
+| **Migrations** (`supabase/migrations/*.sql`) | ✅ Agent gọi migration tool, user confirm → apply | ❌ **KHÔNG tự apply** — schema DB không đổi |
+| **Secrets / config.toml** | ✅ Qua tool chuyên dụng | ❌ Không có hiệu lực |
+
+### Khi push edge function/migration từ ngoài, để deploy phải:
+1. **Cách 1 (khuyến nghị)**: Vào Lovable chat, nói "deploy edge function `<name>`" hoặc "apply migration `<file>`" — agent sẽ chạy tool ngay.
+2. **Cách 2**: Dùng Supabase CLI ở local:
+   ```bash
+   supabase login
+   supabase link --project-ref sasbfslupxdsaqifnqzx
+   supabase functions deploy <name>           # deploy 1 edge function
+   supabase db push                            # apply migrations
+   ```
+   ⚠️ Cách 2 yêu cầu tài khoản Supabase của con có quyền owner trên project. Vì đây là **Lovable Cloud managed project**, tài khoản con có thể không có quyền — khi đó chỉ còn Cách 1.
+
 ## Trước khi commit
 ```bash
 bun run lint && bun run build
 ```
 - Build PHẢI pass. Lint warning OK nhưng error thì không.
 - Commit message tiếng Anh, format `feat:`/`fix:`/`chore:`/`refactor:`.
-- Push lên GitHub → Lovable tự pull về preview.
+- Push lên GitHub → Lovable tự pull về preview (**chỉ frontend rebuild tự động**; edge functions/migrations cần trigger riêng — xem mục Auto-deploy ở trên).
+
 
 ## Bảo mật
 - KHÔNG bao giờ log/echo/return `SUPABASE_SERVICE_ROLE_KEY`, `LOVABLE_API_KEY`, `R2_SECRET_ACCESS_KEY`, hay password.
