@@ -1421,6 +1421,7 @@ ${uniqueTopics
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       } else {
+        usedProvider = actualProv;
         finalResponse = lovableResponse;
       }
     }
