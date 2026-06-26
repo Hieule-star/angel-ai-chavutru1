@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { callChatCompletion } from "../_shared/aiProvider.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -933,7 +934,7 @@ const LOVABLE_TO_OPENAI_MODEL: Record<string, string> = {
   'openai/gpt-5': 'gpt-4o'
 };
 
-type AIProvider = 'lovable' | 'openai';
+type AIProvider = 'lovable' | 'openai' | 'gemini-direct';
 
 // Function to call OpenAI API as fallback
 async function callOpenAI(
@@ -1323,27 +1324,20 @@ ${uniqueTopics
       usedProvider = 'openai';
       finalResponse = openAIResponse;
     }
-    // ==== CASE 2: User explicitly chose Lovable (no fallback) ====
+    // ==== CASE 2: User explicitly chose Lovable (still try Gemini-direct first to save credit) ====
     else if (providerPreference === 'lovable') {
-      console.log("User selected Lovable provider directly (no fallback)");
-      const lovableResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          messages: allMessages,
-          stream: true,
-          ...(model.includes('gpt-5') || model.includes('o3') || model.includes('o4') ? {} : { temperature: intentParams.temperature }),
-          max_completion_tokens: intentParams.maxTokens,
-        }),
+      console.log("User selected Lovable provider (will try Gemini-direct first for cost savings)");
+      const { response: lovableResponse, provider: actualProv } = await callChatCompletion({
+        model,
+        messages: allMessages,
+        stream: true,
+        ...(model.includes('gpt-5') || model.includes('o3') || model.includes('o4') ? {} : { temperature: intentParams.temperature }),
+        max_completion_tokens: intentParams.maxTokens,
       });
       
       if (!lovableResponse.ok) {
         const errorText = await lovableResponse.text();
-        console.error("Lovable AI error:", lovableResponse.status, errorText);
+        console.error("AI provider error:", lovableResponse.status, errorText);
         
         if (lovableResponse.status === 429) {
           return new Response(JSON.stringify({ error: "Quá nhiều yêu cầu, vui lòng thử lại sau." }), {
@@ -1364,25 +1358,18 @@ ${uniqueTopics
         });
       }
       
-      usedProvider = 'lovable';
+      usedProvider = actualProv;
       finalResponse = lovableResponse;
     }
-    // ==== CASE 3: Auto mode - Try Lovable first, fallback to OpenAI ====
+    // ==== CASE 3: Auto mode - Try Gemini-direct → Lovable → OpenAI fallback chain ====
     else {
-      console.log("Auto mode: Try Lovable first, fallback to OpenAI if needed");
-      const lovableResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          messages: allMessages,
-          stream: true,
-          ...(model.includes('gpt-5') || model.includes('o3') || model.includes('o4') ? {} : { temperature: intentParams.temperature }),
-          max_completion_tokens: intentParams.maxTokens,
-        }),
+      console.log("Auto mode: Try Gemini-direct → Lovable, fallback to OpenAI if needed");
+      const { response: lovableResponse, provider: actualProv } = await callChatCompletion({
+        model,
+        messages: allMessages,
+        stream: true,
+        ...(model.includes('gpt-5') || model.includes('o3') || model.includes('o4') ? {} : { temperature: intentParams.temperature }),
+        max_completion_tokens: intentParams.maxTokens,
       });
 
       // Check if we need to fallback to OpenAI
@@ -1434,6 +1421,7 @@ ${uniqueTopics
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       } else {
+        usedProvider = actualProv;
         finalResponse = lovableResponse;
       }
     }
