@@ -27,6 +27,7 @@ const adminNavItems = [
   { title: 'Roles', url: '/admin/roles', icon: Shield },
   { title: 'API Keys', url: '/admin/api-keys', icon: Key },
   { title: 'API Analytics', url: '/admin/api-analytics', icon: BarChart3 },
+  { title: 'Credit Usage', url: '/admin/credit-usage', icon: Wallet },
   { title: 'RAG Debugger', url: '/admin/rag-debug', icon: Bug },
   { title: 'Application Keys', url: '/admin/security/application-keys', icon: Lock },
 ];
