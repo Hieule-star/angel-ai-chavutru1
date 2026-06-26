@@ -1361,22 +1361,15 @@ ${uniqueTopics
       usedProvider = actualProv;
       finalResponse = lovableResponse;
     }
-    // ==== CASE 3: Auto mode - Try Lovable first, fallback to OpenAI ====
+    // ==== CASE 3: Auto mode - Try Gemini-direct → Lovable → OpenAI fallback chain ====
     else {
-      console.log("Auto mode: Try Lovable first, fallback to OpenAI if needed");
-      const lovableResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          messages: allMessages,
-          stream: true,
-          ...(model.includes('gpt-5') || model.includes('o3') || model.includes('o4') ? {} : { temperature: intentParams.temperature }),
-          max_completion_tokens: intentParams.maxTokens,
-        }),
+      console.log("Auto mode: Try Gemini-direct → Lovable, fallback to OpenAI if needed");
+      const { response: lovableResponse, provider: actualProv } = await callChatCompletion({
+        model,
+        messages: allMessages,
+        stream: true,
+        ...(model.includes('gpt-5') || model.includes('o3') || model.includes('o4') ? {} : { temperature: intentParams.temperature }),
+        max_completion_tokens: intentParams.maxTokens,
       });
 
       // Check if we need to fallback to OpenAI
