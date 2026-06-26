@@ -934,7 +934,7 @@ const LOVABLE_TO_OPENAI_MODEL: Record<string, string> = {
   'openai/gpt-5': 'gpt-4o'
 };
 
-type AIProvider = 'lovable' | 'openai';
+type AIProvider = 'lovable' | 'openai' | 'gemini-direct';
 
 // Function to call OpenAI API as fallback
 async function callOpenAI(
