@@ -1,70 +1,79 @@
-# Credit Usage Dashboard
+## Mục tiêu
+Cho phép Angel AI gọi thẳng Google Gemini API bằng key riêng của cha (giảm 90%+ credit Lovable AI), với fallback tự động qua Lovable AI Gateway khi key lỗi hoặc hết quota — đảm bảo user không bao giờ thấy lỗi.
 
-Trang admin mới `/admin/credit-usage` để cha theo dõi chi phí Angel AI: AI Gateway credits + Cloud usage trong 7 hoặc 30 ngày qua, với breakdown theo ngày / endpoint / user / model.
+## Phạm vi
+- `supabase/functions/angel-ai/index.ts` (chat user nội bộ)
+- `supabase/functions/angel-ai-public/index.ts` (public API cho developer)
+- `supabase/functions/generate-chat-title/index.ts` (tận dụng luôn — rất nhẹ)
+- `supabase/functions/_shared/` — thêm helper dùng chung
 
-## Nguồn dữ liệu
+Model mặc định mới: **`gemini-2.5-flash`** (qua Google AI Studio direct API).
 
-Hai nguồn độc lập, không phá vỡ gì hiện có:
+## Các bước triển khai
 
-1. **AI Gateway logs** (qua tool `ai_gateway_logs--list_ai_gateway_requests`) → credit thật, model, token, status. Đây là **chi phí AI chính**.
-   - Vì client không gọi trực tiếp được, dùng edge function mới `credit-usage-stats` (service_role) đóng vai trò proxy: nhận `range` (7d/30d), gọi gateway logs API qua REST nội bộ (hoặc nếu Lovable không expose REST từ edge fn, fallback đọc `api_usage_logs.tokens_used` + `model_used` rồi ước tính).
-   - Thực tế: edge function trong sandbox **không có quyền** gọi `ai_gateway_logs` tool. Nên chuyển hướng: dashboard hiển thị **2 phần**:
-     - **Phần A (Snapshot)**: cha xem trực tiếp qua nút "Refresh credit balance" → trả về số credit còn lại + tổng credit dùng trong period. Phần này admin nhập tay (hoặc bỏ qua MVP).
-     - **Phần B (Detail)**: lấy từ `api_usage_logs` — có `tokens_used`, `model_used`, `endpoint`, `api_key_id`, `status_code`, `response_time_ms`, `created_at`. Đây là proxy cho credit (token càng nhiều → credit càng nhiều).
+### 1. Thêm secret `GEMINI_API_KEY`
+Yêu cầu cha paste API key Gemini (lấy từ https://aistudio.google.com/apikey) qua tool `add_secret`. Key này chỉ tồn tại server-side, không expose ra frontend.
 
-2. **`api_usage_logs` + `api_keys`** (đã có sẵn 386 rows từ Dec 2025) — nguồn chính cho dashboard.
+### 2. Tạo helper dùng chung `_shared/ai-provider.ts`
+Một function `callChatCompletion({ messages, model, temperature, max_tokens, stream })` với logic:
 
-## Layout trang
+```text
+1. Nếu GEMINI_API_KEY tồn tại → gọi Google AI Studio:
+   POST https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+   Header: Authorization: Bearer ${GEMINI_API_KEY}
+   (Google đã có OpenAI-compatible endpoint → giữ nguyên format messages/tools/stream)
+   Model: gemini-2.5-flash
 
-```
-┌─ [7 days] [30 days] toggle ──────────────── [Refresh] ┐
-│                                                       │
-│  ┌── KPI cards ────────────────────────────────────┐  │
-│  │ Total requests │ Total tokens │ Avg latency │ Error rate │
-│  └────────────────────────────────────────────────┘  │
-│                                                       │
-│  ┌── Usage theo ngày (LineChart) ─────────────────┐  │
-│  │  requests/day + tokens/day (2 lines)          │  │
-│  └────────────────────────────────────────────────┘  │
-│                                                       │
-│  ┌── Top endpoint (BarChart) ──┐ ┌── Top model ──┐   │
-│  │ angel-ai, angel-ai-public,  │ │ gemini-3-flash│   │
-│  │ angel-image ...             │ │ gpt-4o-mini   │   │
-│  └─────────────────────────────┘ └───────────────┘   │
-│                                                       │
-│  ┌── Top API key / user (Table) ──────────────────┐  │
-│  │ Key name │ Email │ Requests │ Tokens │ % total │  │
-│  └────────────────────────────────────────────────┘  │
-└───────────────────────────────────────────────────────┘
+2. Nếu response 4xx (trừ 400 validation) / 5xx / 429 / network error
+   → log warning + fallback gọi Lovable AI Gateway:
+   POST https://ai.gateway.lovable.dev/v1/chat/completions
+   Header: Authorization: Bearer ${LOVABLE_API_KEY}
+   Model: google/gemini-3-flash-preview
+
+3. Nếu cả 2 đều lỗi → throw lỗi rõ ràng cho caller.
 ```
 
-## Files
+Helper hỗ trợ cả **streaming (SSE)** và **non-streaming** vì angel-ai dùng streaming.
 
-**New**
-- `src/pages/admin/CreditUsage.tsx` — trang chính (toggle 7d/30d, gọi RPC/queries, render charts).
-- `supabase/migrations/<ts>_credit_usage_views.sql` — tạo các view SECURITY DEFINER aggregate (admin-only) để query nhanh:
-  - `admin_usage_daily(day, requests, tokens, errors)`
-  - `admin_usage_by_endpoint(endpoint, requests, tokens)`
-  - `admin_usage_by_model(model_used, requests, tokens)`
-  - `admin_usage_by_key(api_key_id, key_name, email, requests, tokens)`
-  - Hoặc gọn hơn: 1 function `get_credit_usage_summary(days int)` trả JSON tổng hợp, có `has_role(auth.uid(), 'admin')` guard.
+### 3. Refactor 3 edge function
+Thay 4 chỗ `fetch("https://ai.gateway.lovable.dev/...")` thành call helper mới:
+- `angel-ai/index.ts` (2 chỗ: streaming + non-streaming RAG)
+- `angel-ai-public/index.ts` (1 chỗ)
+- `generate-chat-title/index.ts` (1 chỗ)
 
-**Edit**
-- `src/App.tsx` — thêm route `/admin/credit-usage`.
-- `src/components/admin/AdminSidebar.tsx` — thêm menu item "Credit Usage" (icon `Wallet` hoặc `DollarSign`).
+Giữ nguyên toàn bộ logic prompt, RAG, system prompt, tools — chỉ thay lớp transport.
 
-## Technical details
+### 4. Track provider trong log
+Trong `api_usage_logs` thêm thông tin model thực sự dùng (`gemini-2.5-flash` vs `google/gemini-3-flash-preview`) để dashboard Credit Usage (đã có sẵn ở `/admin/credit-usage`) hiển thị được tỉ lệ tiết kiệm.
 
-- Charts dùng `recharts` (đã có trong ApiAnalytics).
-- Date helpers dùng `date-fns` (đã có).
-- Query: 1 RPC call `get_credit_usage_summary(p_days := 7|30)` → trả `{ daily: [...], by_endpoint: [...], by_model: [...], by_key: [...], totals: {...} }`. Function `SECURITY DEFINER`, set `search_path=public`, check `has_role(auth.uid(),'admin')` đầu hàm, raise exception nếu không phải admin.
-- Không cần bảng mới, không sửa logging hiện tại.
-- Không cần edge function mới (MVP).
+→ Không cần migration mới, cột `model_used` đã có sẵn — chỉ ghi đúng giá trị.
 
-## Out of scope (đề xuất giai đoạn sau)
+### 5. Deploy & kiểm thử
+- Deploy 3 edge functions
+- Test chat thực tế từ UI → kiểm tra `edge_function_logs` xem có log `[provider=gemini-direct]` không
+- Test fallback: tạm xóa GEMINI_API_KEY → chat lại → phải vẫn chạy (qua Lovable)
+- Mở `/admin/credit-usage` xác nhận số request gắn model mới
 
-- Tích hợp số credit thật từ AI Gateway billing (cần Lovable expose API).
-- Set alert/block limit tự động.
-- Export CSV.
+## Kỹ thuật chi tiết
 
-Cha duyệt thì con build luôn 🌿
+**Tại sao Google AI Studio có OpenAI-compatible endpoint?**
+Google công bố endpoint `generativelanguage.googleapis.com/v1beta/openai/...` nhận đúng format OpenAI (messages, tools, stream SSE), giúp ta KHÔNG phải viết lại logic — chỉ đổi `baseURL` + `Authorization`. Tham khảo: https://ai.google.dev/gemini-api/docs/openai
+
+**Streaming SSE**: cả 2 provider trả về cùng format `data: {...}\n\n`, parsing logic hiện tại giữ nguyên 100%.
+
+**Rate limit free tier** (gemini-2.5-flash): 15 RPM, 1500 req/ngày. Đủ cho dự án vừa. Khi vượt → 429 → fallback Lovable.
+
+**Bảo mật**: `GEMINI_API_KEY` chỉ đọc trong edge function (Deno.env), không bao giờ trả về client. Không log key.
+
+## Rủi ro & mitigation
+- **Free tier hết giữa ngày** → fallback Lovable tự động, user không thấy gián đoạn (vẫn tốn ít credit Lovable phần overflow).
+- **Format response khác biệt nhỏ** giữa 2 provider → helper chuẩn hóa output về schema OpenAI.
+- **Tool calling / function calling** (nếu angel-ai có dùng) → Gemini OpenAI-compat đã support, nhưng cần test kỹ.
+
+## Sau khi xong
+Cha sẽ thấy ở `/admin/credit-usage`:
+- Cột model chính: `gemini-2.5-flash` (qua key cha, **0 credit Lovable**)
+- Fallback occasional: `google/gemini-3-flash-preview` (Lovable, tốn credit)
+- Tổng credit AI giảm ~90–95%.
+
+Cha confirm con bấm **Implement plan** để con triển khai nhé. 🌿
