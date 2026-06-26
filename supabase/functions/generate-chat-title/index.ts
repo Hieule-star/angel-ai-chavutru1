@@ -23,8 +23,9 @@ serve(async (req) => {
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY not configured');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    if (!LOVABLE_API_KEY && !GEMINI_API_KEY) {
+      console.error('No AI provider key configured');
       return new Response(
         JSON.stringify({ title: 'Cuộc trò chuyện mới' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -53,21 +54,15 @@ Ví dụ đúng:
 - "Ý nghĩa 8 thần chú"
 - "How to meditate daily"`;
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Tạo tiêu đề cho cuộc hội thoại này:\n\n"${userMessages}"` }
-        ],
-        max_tokens: 50,
-      }),
+    const { response, provider } = await callChatCompletion({
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Tạo tiêu đề cho cuộc hội thoại này:\n\n"${userMessages}"` }
+      ],
+      max_completion_tokens: 50,
     });
+    console.log(`[generate-chat-title] provider=${provider} status=${response.status}`);
 
     if (!response.ok) {
       console.error('AI gateway error:', response.status);
