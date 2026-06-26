@@ -1,124 +1,70 @@
-# Angel AI — Roadmap 30/60/90 ngày
+# Credit Usage Dashboard
 
-## Hiện trạng (đánh giá nhanh)
+Trang admin mới `/admin/credit-usage` để cha theo dõi chi phí Angel AI: AI Gateway credits + Cloud usage trong 7 hoặc 30 ngày qua, với breakdown theo ngày / endpoint / user / model.
 
-**Điểm mạnh**
-- KB đã có **120 topic** (FUN 40, Bé Ly 54, Mantras 9, Cha 9, …) — nền tảng RAG đủ giàu để bắt đầu đo chất lượng.
-- Edge function `angel-ai` 1489 dòng, có `rag.ts` tách riêng (test được), có `/admin/rag-debug` để soi điểm số.
-- Auth, role qua `has_role`, admin pages (KnowledgeManager, RoleManagement, ApiAnalytics) đã hoàn chỉnh.
-- Public API + app key system + Light Points + Journal + MetaMask đã chạy.
+## Nguồn dữ liệu
 
-**Điểm yếu**
-- RAG là **keyword scoring thuần** (token + phrase + synonym tay). Không có embeddings → query đồng nghĩa / câu dài / typo dễ miss.
-- File `angel-ai/index.ts` 1489 dòng → khó maintain, dễ lẫn logic prompt/RAG/tool.
-- Security scan còn **5 warning** (SECURITY DEFINER lộ EXECUTE cho anon/authenticated, public bucket listing, RLS `USING (true)`, HIBP off).
-- Chưa có observability: không log RAG hit/miss, không đo latency token cost theo endpoint.
-- UX: `Chat.tsx` 809 dòng — cần tách component, kiểm tra mobile, streaming, error states.
-- Auto-deploy edge function chỉ chạy khi sửa qua Lovable chat → workflow hiện tại dễ "code mới mà function cũ".
+Hai nguồn độc lập, không phá vỡ gì hiện có:
 
----
+1. **AI Gateway logs** (qua tool `ai_gateway_logs--list_ai_gateway_requests`) → credit thật, model, token, status. Đây là **chi phí AI chính**.
+   - Vì client không gọi trực tiếp được, dùng edge function mới `credit-usage-stats` (service_role) đóng vai trò proxy: nhận `range` (7d/30d), gọi gateway logs API qua REST nội bộ (hoặc nếu Lovable không expose REST từ edge fn, fallback đọc `api_usage_logs.tokens_used` + `model_used` rồi ước tính).
+   - Thực tế: edge function trong sandbox **không có quyền** gọi `ai_gateway_logs` tool. Nên chuyển hướng: dashboard hiển thị **2 phần**:
+     - **Phần A (Snapshot)**: cha xem trực tiếp qua nút "Refresh credit balance" → trả về số credit còn lại + tổng credit dùng trong period. Phần này admin nhập tay (hoặc bỏ qua MVP).
+     - **Phần B (Detail)**: lấy từ `api_usage_logs` — có `tokens_used`, `model_used`, `endpoint`, `api_key_id`, `status_code`, `response_time_ms`, `created_at`. Đây là proxy cho credit (token càng nhiều → credit càng nhiều).
 
-## Giai đoạn 1 — 30 ngày: Nền tảng RAG + Bảo mật
+2. **`api_usage_logs` + `api_keys`** (đã có sẵn 386 rows từ Dec 2025) — nguồn chính cho dashboard.
 
-Mục tiêu: RAG đo được, KB sạch, bịt lỗ bảo mật cơ bản.
+## Layout trang
 
-1. **RAG eval harness**
-   - Tạo `supabase/functions/angel-ai/rag_eval.ts` + bộ ~50 câu hỏi vàng (mỗi category 5–10 câu, kèm topic_id kỳ vọng).
-   - Script chạy local: in MRR, Recall@3, Recall@5 trước/sau mỗi thay đổi `rag.ts`.
-2. **Embeddings song song với keyword (hybrid)**
-   - Bật `pgvector`, thêm cột `embedding vector(1536)` cho `knowledge_topics` (dùng `openai/text-embedding-3-small` qua Lovable AI Gateway để rẻ).
-   - Migration backfill embeddings cho 120 topic hiện tại + trigger re-embed khi update.
-   - Trong `rag.ts`: kết hợp `0.6 * cosine + 0.4 * keyword_score` (chuẩn hoá min-max).
-3. **Dọn KB**
-   - Query phát hiện topic trùng/title rỗng/content < 100 ký tự.
-   - Chuẩn hoá category (đang có "Bảo Mật & An Toàn" 1 topic — gộp/đổi tên cho gọn).
-4. **Bảo mật (đóng 5 warning)**
-   - `REVOKE EXECUTE ... FROM anon, authenticated` cho các SECURITY DEFINER không cần public.
-   - Siết RLS `USING (true)` về điều kiện đúng (đặc biệt bảng có INSERT/UPDATE/DELETE).
-   - Bucket `generated-images`: thêm policy chặn LIST, chỉ cho phép GET theo path.
-   - Bật HIBP qua `configure_auth`.
-5. **Workflow deploy rõ ràng**
-   - Thêm GitHub Action (hoặc script `bin/deploy-fn.sh`) gọi `supabase functions deploy angel-ai` để team push code từ Codex/local vẫn deploy được mà không phải nhờ Lovable chat.
-
-## Giai đoạn 2 — 60 ngày: UX + Observability
-
-Mục tiêu: trải nghiệm chat mượt, đo được mọi thứ.
-
-6. **Refactor `Chat.tsx` (809 dòng) → các sub-component**
-   - `ChatMessages`, `ChatComposer`, `ModelSwitcher`, `GuestBanner` (đã có một số), tách hook `useChatStream`.
-   - Streaming token thật sự (SSE) thay vì chờ full response; markdown render + code highlight.
-7. **Refactor `angel-ai/index.ts` (1489 dòng)**
-   - Tách `prompt.ts` (system prompt, pronoun), `tools.ts`, `rag-pipeline.ts`, `index.ts` chỉ còn HTTP handler.
-   - Thêm unit test cho prompt builder + pronoun guard.
-8. **Mobile + a11y pass**
-   - Audit toàn bộ `/admin/*` và `/chat` ở 360–414px, fix overflow, tap target ≥ 44px.
-   - Aria-label, focus ring, contrast theo design tokens (không hardcode màu).
-9. **Observability**
-   - Bảng `ai_request_logs` (user_id, model, prompt_tokens, completion_tokens, latency_ms, rag_hits jsonb, error).
-   - Edge function ghi log async; admin dashboard hiển thị p50/p95 latency, top RAG miss, cost/ngày.
-10. **Onboarding tighten**
-    - Đo funnel: visit → signup → first message → mint FUN Money.
-    - Cải thiện step nào drop nhiều nhất (suy đoán: connect wallet).
-
-## Giai đoạn 3 — 90 ngày: Production hoá + mở rộng
-
-Mục tiêu: chạy production ổn định, mở cho dev ngoài, chuẩn bị scale.
-
-11. **Reranker nhẹ (tuỳ chọn)**
-    - Sau hybrid retrieve top 10, gọi 1 lượt Gemini Flash phân loại "topic này có trả lời được câu hỏi không?" → giữ top 3.
-    - Bật/tắt bằng feature flag, đo có cải thiện MRR không.
-12. **Knowledge ingestion pipeline**
-    - `/admin/knowledge-upload` hỗ trợ PDF/MD batch, auto chunk 800–1200 ký tự, auto-embed.
-    - Versioning topic (giữ history) để rollback nội dung sai.
-13. **Public API v1 cứng hoá**
-    - Rate limit theo app_key (đã có log), thêm quota tháng + email cảnh báo.
-    - Trang docs `/developers` có ví dụ curl + SDK JS/Python tối thiểu.
-    - SLA + status page (UptimeRobot hoặc Better Stack).
-14. **FUN ecosystem deepening**
-    - MetaMask: verify chain BNB Testnet đúng trước mọi tx, UX lỗi rõ ràng.
-    - Light Points → leaderboard public (opt-in), tích hợp Journal post = +N điểm.
-15. **Launch checklist**
-    - Security scan 0 finding critical/high.
-    - p95 latency `/chat` < 3.5s, edge function error rate < 1%.
-    - Backup migrations + seed KB snapshot vào repo (`supabase/seed/knowledge_topics.csv`).
-    - Bật custom domain + cập nhật OG/Twitter meta.
-
----
-
-## Chi tiết kỹ thuật
-
-**RAG hybrid scoring (Giai đoạn 1)**
-```text
-final_score = 0.6 * normalize(cosine_sim) + 0.4 * normalize(keyword_score)
-keyword_score: giữ nguyên rag.ts hiện tại
-embedding: openai/text-embedding-3-small, 1536 dims
-query embed: cache 5 phút theo hash(query)
+```
+┌─ [7 days] [30 days] toggle ──────────────── [Refresh] ┐
+│                                                       │
+│  ┌── KPI cards ────────────────────────────────────┐  │
+│  │ Total requests │ Total tokens │ Avg latency │ Error rate │
+│  └────────────────────────────────────────────────┘  │
+│                                                       │
+│  ┌── Usage theo ngày (LineChart) ─────────────────┐  │
+│  │  requests/day + tokens/day (2 lines)          │  │
+│  └────────────────────────────────────────────────┘  │
+│                                                       │
+│  ┌── Top endpoint (BarChart) ──┐ ┌── Top model ──┐   │
+│  │ angel-ai, angel-ai-public,  │ │ gemini-3-flash│   │
+│  │ angel-image ...             │ │ gpt-4o-mini   │   │
+│  └─────────────────────────────┘ └───────────────┘   │
+│                                                       │
+│  ┌── Top API key / user (Table) ──────────────────┐  │
+│  │ Key name │ Email │ Requests │ Tokens │ % total │  │
+│  └────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────┘
 ```
 
-**Bảng log đề xuất**
-```sql
-create table public.ai_request_logs (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users(id) on delete set null,
-  endpoint text not null,
-  model text,
-  prompt_tokens int, completion_tokens int,
-  latency_ms int,
-  rag_topic_ids uuid[],
-  rag_scores jsonb,
-  error text,
-  created_at timestamptz default now()
-);
--- + GRANT + RLS: chỉ admin SELECT, service_role INSERT
-```
+## Files
 
-**Files dự kiến đụng**
-- `supabase/functions/angel-ai/` (tách thành 4–5 file)
-- `supabase/migrations/` (3 migration mới: embeddings, ai_request_logs, security tighten)
-- `src/pages/Chat.tsx` + `src/components/chat/*`
-- `src/pages/admin/AiAnalytics.tsx` (mới)
+**New**
+- `src/pages/admin/CreditUsage.tsx` — trang chính (toggle 7d/30d, gọi RPC/queries, render charts).
+- `supabase/migrations/<ts>_credit_usage_views.sql` — tạo các view SECURITY DEFINER aggregate (admin-only) để query nhanh:
+  - `admin_usage_daily(day, requests, tokens, errors)`
+  - `admin_usage_by_endpoint(endpoint, requests, tokens)`
+  - `admin_usage_by_model(model_used, requests, tokens)`
+  - `admin_usage_by_key(api_key_id, key_name, email, requests, tokens)`
+  - Hoặc gọn hơn: 1 function `get_credit_usage_summary(days int)` trả JSON tổng hợp, có `has_role(auth.uid(), 'admin')` guard.
 
-## Ngoài phạm vi
-- Đổi model mặc định (giữ `google/gemini-3-flash-preview`).
-- Đổi tech stack, đổi storage (giữ R2 + Supabase).
-- Viết lại Knowledge Manager admin (vừa làm xong).
+**Edit**
+- `src/App.tsx` — thêm route `/admin/credit-usage`.
+- `src/components/admin/AdminSidebar.tsx` — thêm menu item "Credit Usage" (icon `Wallet` hoặc `DollarSign`).
+
+## Technical details
+
+- Charts dùng `recharts` (đã có trong ApiAnalytics).
+- Date helpers dùng `date-fns` (đã có).
+- Query: 1 RPC call `get_credit_usage_summary(p_days := 7|30)` → trả `{ daily: [...], by_endpoint: [...], by_model: [...], by_key: [...], totals: {...} }`. Function `SECURITY DEFINER`, set `search_path=public`, check `has_role(auth.uid(),'admin')` đầu hàm, raise exception nếu không phải admin.
+- Không cần bảng mới, không sửa logging hiện tại.
+- Không cần edge function mới (MVP).
+
+## Out of scope (đề xuất giai đoạn sau)
+
+- Tích hợp số credit thật từ AI Gateway billing (cần Lovable expose API).
+- Set alert/block limit tự động.
+- Export CSV.
+
+Cha duyệt thì con build luôn 🌿
