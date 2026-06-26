@@ -432,8 +432,8 @@ serve(async (req) => {
     // ========== AI GATEWAY CALL ==========
     logSection(requestId, "AI GATEWAY CALL");
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    if (!LOVABLE_API_KEY && !Deno.env.get("GEMINI_API_KEY")) {
+      throw new Error("Neither GEMINI_API_KEY nor LOVABLE_API_KEY is configured");
     }
 
     const aiModel = "google/gemini-2.5-flash";
@@ -447,20 +447,13 @@ serve(async (req) => {
     });
 
     const aiStartTime = Date.now();
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: aiModel,
-        messages: [
-          { role: "system", content: fullSystemPrompt },
-          ...messages,
-        ],
-        stream,
-      }),
+    const { response, provider: usedProvider, modelUsed } = await callChatCompletion({
+      model: aiModel,
+      messages: [
+        { role: "system", content: fullSystemPrompt },
+        ...messages,
+      ],
+      stream,
     });
 
     const aiResponseTime = Date.now() - aiStartTime;
@@ -469,7 +462,9 @@ serve(async (req) => {
       status: response.status,
       statusText: response.statusText,
       contentType: response.headers.get("content-type") || "unknown",
-      responseTimeMs: aiResponseTime
+      responseTimeMs: aiResponseTime,
+      provider: usedProvider,
+      modelUsed,
     });
 
     // ========== LOG TO DATABASE ==========
@@ -486,7 +481,7 @@ serve(async (req) => {
       pronoun_style: pronounStyle,
       message_count: messages.length,
       stream_mode: stream,
-      model_used: aiModel,
+      model_used: `${modelUsed} (${usedProvider})`,
       origin: req.headers.get("origin") || "unknown",
     });
 
