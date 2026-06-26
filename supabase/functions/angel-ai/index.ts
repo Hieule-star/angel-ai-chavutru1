@@ -1327,20 +1327,16 @@ ${uniqueTopics
     // ==== CASE 2: User explicitly chose Lovable (no fallback) ====
     else if (providerPreference === 'lovable') {
       console.log("User selected Lovable provider directly (no fallback)");
-      const lovableResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          messages: allMessages,
-          stream: true,
-          ...(model.includes('gpt-5') || model.includes('o3') || model.includes('o4') ? {} : { temperature: intentParams.temperature }),
-          max_completion_tokens: intentParams.maxTokens,
-        }),
+      const { response: lovableResponse, provider: lovableProv, modelUsed: lovableModelUsed } = await callChatCompletion({
+        model,
+        messages: allMessages,
+        stream: true,
+        ...(model.includes('gpt-5') || model.includes('o3') || model.includes('o4') ? {} : { temperature: intentParams.temperature }),
+        max_completion_tokens: intentParams.maxTokens,
       });
+      // track which provider actually served the request
+      (globalThis as any).__lastLovableProv = lovableProv;
+      (globalThis as any).__lastLovableModel = lovableModelUsed;
       
       if (!lovableResponse.ok) {
         const errorText = await lovableResponse.text();
