@@ -515,6 +515,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_credit_usage_summary: { Args: { p_days?: number }; Returns: Json }
       get_daily_usage_count: { Args: { p_api_key_id: string }; Returns: number }
       has_role: {
         Args: {
