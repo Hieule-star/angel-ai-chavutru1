@@ -29,6 +29,7 @@ import LightConstitution from "./pages/LightConstitution";
 import CTOChat from "./pages/CTOChat";
 import RagDebug from "./pages/admin/RagDebug";
 import ApplicationKeys from "./pages/admin/ApplicationKeys";
+import CreditUsage from "./pages/admin/CreditUsage";
 import InternalAuth from "./pages/docs/InternalAuth";
 
 const queryClient = new QueryClient();
