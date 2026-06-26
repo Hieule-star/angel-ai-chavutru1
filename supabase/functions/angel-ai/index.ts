@@ -1324,23 +1324,20 @@ ${uniqueTopics
       usedProvider = 'openai';
       finalResponse = openAIResponse;
     }
-    // ==== CASE 2: User explicitly chose Lovable (no fallback) ====
+    // ==== CASE 2: User explicitly chose Lovable (still try Gemini-direct first to save credit) ====
     else if (providerPreference === 'lovable') {
-      console.log("User selected Lovable provider directly (no fallback)");
-      const { response: lovableResponse, provider: lovableProv, modelUsed: lovableModelUsed } = await callChatCompletion({
+      console.log("User selected Lovable provider (will try Gemini-direct first for cost savings)");
+      const { response: lovableResponse, provider: actualProv } = await callChatCompletion({
         model,
         messages: allMessages,
         stream: true,
         ...(model.includes('gpt-5') || model.includes('o3') || model.includes('o4') ? {} : { temperature: intentParams.temperature }),
         max_completion_tokens: intentParams.maxTokens,
       });
-      // track which provider actually served the request
-      (globalThis as any).__lastLovableProv = lovableProv;
-      (globalThis as any).__lastLovableModel = lovableModelUsed;
       
       if (!lovableResponse.ok) {
         const errorText = await lovableResponse.text();
-        console.error("Lovable AI error:", lovableResponse.status, errorText);
+        console.error("AI provider error:", lovableResponse.status, errorText);
         
         if (lovableResponse.status === 429) {
           return new Response(JSON.stringify({ error: "Quá nhiều yêu cầu, vui lòng thử lại sau." }), {
@@ -1361,7 +1358,7 @@ ${uniqueTopics
         });
       }
       
-      usedProvider = 'lovable';
+      usedProvider = actualProv;
       finalResponse = lovableResponse;
     }
     // ==== CASE 3: Auto mode - Try Lovable first, fallback to OpenAI ====
