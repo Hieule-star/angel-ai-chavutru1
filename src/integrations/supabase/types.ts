@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_generated_apps: {
+        Row: {
+          app_type: string
+          build_logs: string | null
+          created_at: string
+          description: string | null
+          id: string
+          model_used: string | null
+          preview_url: string | null
+          prompt: string | null
+          safety_flags: Json | null
+          source_code: Json
+          status: Database["public"]["Enums"]["mini_app_status"]
+          title: string
+          tokens_used: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          app_type?: string
+          build_logs?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          model_used?: string | null
+          preview_url?: string | null
+          prompt?: string | null
+          safety_flags?: Json | null
+          source_code?: Json
+          status?: Database["public"]["Enums"]["mini_app_status"]
+          title: string
+          tokens_used?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          app_type?: string
+          build_logs?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          model_used?: string | null
+          preview_url?: string | null
+          prompt?: string | null
+          safety_flags?: Json | null
+          source_code?: Json
+          status?: Database["public"]["Enums"]["mini_app_status"]
+          title?: string
+          tokens_used?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       api_keys: {
         Row: {
           created_at: string | null
@@ -312,6 +366,122 @@ export type Database = {
         }
         Relationships: []
       }
+      mini_app_generation_log: {
+        Row: {
+          action: string
+          app_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          ip_address: string | null
+          model: string | null
+          safety_flags: Json | null
+          tokens: number | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          app_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          model?: string | null
+          safety_flags?: Json | null
+          tokens?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          app_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          model?: string | null
+          safety_flags?: Json | null
+          tokens?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mini_app_generation_log_app_id_fkey"
+            columns: ["app_id"]
+            isOneToOne: false
+            referencedRelation: "ai_generated_apps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mini_app_quota_overrides: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          extra_daily: number | null
+          extra_monthly: number | null
+          id: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          extra_daily?: number | null
+          extra_monthly?: number | null
+          id?: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          extra_daily?: number | null
+          extra_monthly?: number | null
+          id?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mini_app_quotas: {
+        Row: {
+          bonus_quota: number | null
+          burst_per_hour: number | null
+          daily_limit: number | null
+          id: string
+          monthly_limit: number | null
+          notes: string | null
+          role: string
+          token_budget: number | null
+          updated_at: string
+        }
+        Insert: {
+          bonus_quota?: number | null
+          burst_per_hour?: number | null
+          daily_limit?: number | null
+          id?: string
+          monthly_limit?: number | null
+          notes?: string | null
+          role: string
+          token_budget?: number | null
+          updated_at?: string
+        }
+        Update: {
+          bonus_quota?: number | null
+          burst_per_hour?: number | null
+          daily_limit?: number | null
+          id?: string
+          monthly_limit?: number | null
+          notes?: string | null
+          role?: string
+          token_budget?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       post_media: {
         Row: {
           created_at: string | null
@@ -517,6 +687,7 @@ export type Database = {
     Functions: {
       get_credit_usage_summary: { Args: { p_days?: number }; Returns: Json }
       get_daily_usage_count: { Args: { p_api_key_id: string }; Returns: number }
+      get_mini_app_quota_status: { Args: { p_user_id?: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -531,6 +702,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      mini_app_status: "draft" | "preview" | "approved" | "deployed" | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -659,6 +831,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      mini_app_status: ["draft", "preview", "approved", "deployed", "failed"],
     },
   },
 } as const

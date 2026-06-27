@@ -31,6 +31,9 @@ import RagDebug from "./pages/admin/RagDebug";
 import ApplicationKeys from "./pages/admin/ApplicationKeys";
 import CreditUsage from "./pages/admin/CreditUsage";
 import InternalAuth from "./pages/docs/InternalAuth";
+import MiniApps from "./pages/MiniApps";
+import MiniAppBuilder from "./pages/MiniAppBuilder";
+import MiniAppQuotas from "./pages/admin/MiniAppQuotas";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +76,9 @@ function AppContent() {
       <Route path="/docs/internal-auth" element={<InternalAuth />} />
       <Route path="/developers" element={<Developers />} />
       <Route path="/developers/keys" element={<DeveloperKeys />} />
+      <Route path="/mini-apps" element={<MiniApps />} />
+      <Route path="/mini-apps/:id" element={<MiniAppBuilder />} />
+      <Route path="/admin/mini-app-quotas" element={<MiniAppQuotas />} />
       <Route path="/install" element={<Install />} />
       <Route path="/docs/platform" element={<Platform />} />
       <Route path="/light-constitution" element={<LightConstitution />} />
