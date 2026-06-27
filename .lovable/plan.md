@@ -1,79 +1,130 @@
-## Mục tiêu
-Cho phép Angel AI gọi thẳng Google Gemini API bằng key riêng của cha (giảm 90%+ credit Lovable AI), với fallback tự động qua Lovable AI Gateway khi key lỗi hoặc hết quota — đảm bảo user không bao giờ thấy lỗi.
+## Mini App / Mini Game Builder — Implementation Plan
 
-## Phạm vi
-- `supabase/functions/angel-ai/index.ts` (chat user nội bộ)
-- `supabase/functions/angel-ai-public/index.ts` (public API cho developer)
-- `supabase/functions/generate-chat-title/index.ts` (tận dụng luôn — rất nhẹ)
-- `supabase/functions/_shared/` — thêm helper dùng chung
+A safe in-browser builder where Angel AI generates self-contained React+TS+Tailwind mini apps, renders them in a sandboxed iframe, and lets users iterate before "deploying" (Phase 1 = preview-only).
 
-Model mặc định mới: **`gemini-2.5-flash`** (qua Google AI Studio direct API).
+---
 
-## Các bước triển khai
+### 1. Database (1 migration)
 
-### 1. Thêm secret `GEMINI_API_KEY`
-Yêu cầu cha paste API key Gemini (lấy từ https://aistudio.google.com/apikey) qua tool `add_secret`. Key này chỉ tồn tại server-side, không expose ra frontend.
+**`ai_generated_apps`** — generated app drafts
+- `user_id`, `title`, `description`, `app_type` (quiz/memory/clicker/puzzle/spin/breathing/platformer/reaction/custom)
+- `status` enum: `draft | preview | approved | deployed | failed`
+- `source_code` jsonb (multi-file: `{ "App.tsx": "...", "styles.css": "..." }`)
+- `build_logs` text, `preview_url` text (nullable, Phase 2)
+- `model_used`, `prompt`, `tokens_used`
+- RLS: owner-only read/write; admin read all
 
-### 2. Tạo helper dùng chung `_shared/ai-provider.ts`
-Một function `callChatCompletion({ messages, model, temperature, max_tokens, stream })` với logic:
+**`mini_app_quotas`** — configurable per-role quotas (admin-editable)
+- `role` (guest/user/premium/coordinator/admin), `daily_limit`, `monthly_limit`, `burst_per_hour`, `token_budget`, `bonus_quota`
+- Seed defaults: 2 / 5 / 20 / 100 / NULL(unlimited)
+- RLS: anyone authenticated reads; admin writes
 
-```text
-1. Nếu GEMINI_API_KEY tồn tại → gọi Google AI Studio:
-   POST https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
-   Header: Authorization: Bearer ${GEMINI_API_KEY}
-   (Google đã có OpenAI-compatible endpoint → giữ nguyên format messages/tools/stream)
-   Model: gemini-2.5-flash
+**`mini_app_quota_overrides`** — per-user bonus/override (admin grants)
+- `user_id`, `extra_daily`, `extra_monthly`, `expires_at`, `reason`
 
-2. Nếu response 4xx (trừ 400 validation) / 5xx / 429 / network error
-   → log warning + fallback gọi Lovable AI Gateway:
-   POST https://ai.gateway.lovable.dev/v1/chat/completions
-   Header: Authorization: Bearer ${LOVABLE_API_KEY}
-   Model: google/gemini-3-flash-preview
+**`mini_app_generation_log`** — audit + analytics
+- `user_id`, `app_id`, `action` (generate/regenerate/preview/approve/deploy/block), `tokens`, `model`, `safety_flags` jsonb, `ip`
 
-3. Nếu cả 2 đều lỗi → throw lỗi rõ ràng cho caller.
-```
+**`get_mini_app_quota_status(user_id)`** RPC → returns `{ role, daily_used, daily_limit, monthly_used, monthly_limit, remaining }`
 
-Helper hỗ trợ cả **streaming (SSE)** và **non-streaming** vì angel-ai dùng streaming.
+---
 
-### 3. Refactor 3 edge function
-Thay 4 chỗ `fetch("https://ai.gateway.lovable.dev/...")` thành call helper mới:
-- `angel-ai/index.ts` (2 chỗ: streaming + non-streaming RAG)
-- `angel-ai-public/index.ts` (1 chỗ)
-- `generate-chat-title/index.ts` (1 chỗ)
+### 2. Edge function: `mini-app-generate`
 
-Giữ nguyên toàn bộ logic prompt, RAG, system prompt, tools — chỉ thay lớp transport.
+Single endpoint, JWT-verified.
+- Validate input (Zod): `prompt`, `template?`, `app_id?` (for regenerate), `model?`
+- Check quota via RPC → 429 with friendly message if exceeded
+- Safety pre-filter: regex/keyword blocklist for phishing, wallet drain, credential theft, scam, malicious patterns (`eval(`, `document.cookie`, `localStorage.getItem('sb-`, fetch to suspicious hosts)
+- Model routing (reuses `_shared/aiProvider.ts`):
+  - Simple template: `gemini-2.5-flash`
+  - Complex/custom: `gemini-2.5-pro`
+  - Fallback: Lovable Gateway
+- System prompt enforces:
+  - Output strict JSON: `{ title, description, app_type, files: { "App.tsx": "..." }, entry: "App.tsx", summary }`
+  - Only React/TS/Tailwind/shadcn (allowlist of imports)
+  - No network calls, no secrets, no DB, no auth, no external URLs except whitelisted CDNs
+  - Self-contained, no npm installs beyond React + Tailwind CDN
+- Safety post-filter on generated code (same blocklist + AST-lite regex)
+- Insert into `ai_generated_apps` (status=`draft`), log to `mini_app_generation_log`
+- Return app record
 
-### 4. Track provider trong log
-Trong `api_usage_logs` thêm thông tin model thực sự dùng (`gemini-2.5-flash` vs `google/gemini-3-flash-preview`) để dashboard Credit Usage (đã có sẵn ở `/admin/credit-usage`) hiển thị được tỉ lệ tiết kiệm.
+---
 
-→ Không cần migration mới, cột `model_used` đã có sẵn — chỉ ghi đúng giá trị.
+### 3. In-browser sandbox runtime
 
-### 5. Deploy & kiểm thử
-- Deploy 3 edge functions
-- Test chat thực tế từ UI → kiểm tra `edge_function_logs` xem có log `[provider=gemini-direct]` không
-- Test fallback: tạm xóa GEMINI_API_KEY → chat lại → phải vẫn chạy (qua Lovable)
-- Mở `/admin/credit-usage` xác nhận số request gắn model mới
+`src/components/miniapp/MiniAppPreview.tsx`
+- Sandboxed `<iframe sandbox="allow-scripts">` (no `allow-same-origin` → blocks localStorage/cookies leak)
+- `srcdoc` built from template:
+  - Tailwind via CDN
+  - React 18 + ReactDOM UMD
+  - Babel standalone for TSX in-browser compile
+  - Inject generated `App.tsx` and mount
+- `postMessage` bridge: iframe → parent for runtime errors (shown as build_logs)
+- CSP meta tag: no external connects, no inline scripts beyond Babel
 
-## Kỹ thuật chi tiết
+---
 
-**Tại sao Google AI Studio có OpenAI-compatible endpoint?**
-Google công bố endpoint `generativelanguage.googleapis.com/v1beta/openai/...` nhận đúng format OpenAI (messages, tools, stream SSE), giúp ta KHÔNG phải viết lại logic — chỉ đổi `baseURL` + `Authorization`. Tham khảo: https://ai.google.dev/gemini-api/docs/openai
+### 4. Frontend pages & UX
 
-**Streaming SSE**: cả 2 provider trả về cùng format `data: {...}\n\n`, parsing logic hiện tại giữ nguyên 100%.
+**`src/pages/MiniApps.tsx`** (new route `/mini-apps`)
+- Header: "Mini App Builder" + remaining quota badge ("3/5 today")
+- Template gallery: 8 cards (Quiz, Memory, Clicker, Puzzle, Spin Wheel, Breathing, Platformer, Reaction)
+- "My Apps" grid — user's drafts with status badges
+- Click template or "Custom" → opens Builder
 
-**Rate limit free tier** (gemini-2.5-flash): 15 RPM, 1500 req/ngày. Đủ cho dự án vừa. Khi vượt → 429 → fallback Lovable.
+**`src/pages/MiniAppBuilder.tsx`** (`/mini-apps/:id?`)
+- Left pane: chat-style builder (reuses ChatInput pattern)
+  - Angel asks clarifying questions if prompt vague
+  - Shows generated spec summary BEFORE coding (user confirms)
+- Right pane: `<MiniAppPreview>` live iframe
+- Action bar: **Preview** · **Edit prompt** · **Regenerate** · **Approve** (sets status=approved) · **Deploy** (disabled w/ tooltip "Phase 2")
+- Build log drawer
 
-**Bảo mật**: `GEMINI_API_KEY` chỉ đọc trong edge function (Deno.env), không bao giờ trả về client. Không log key.
+**`src/pages/Chat.tsx`** — add quick-access button "✨ Create Mini App" beside ModelSelector → navigates to `/mini-apps`
 
-## Rủi ro & mitigation
-- **Free tier hết giữa ngày** → fallback Lovable tự động, user không thấy gián đoạn (vẫn tốn ít credit Lovable phần overflow).
-- **Format response khác biệt nhỏ** giữa 2 provider → helper chuẩn hóa output về schema OpenAI.
-- **Tool calling / function calling** (nếu angel-ai có dùng) → Gemini OpenAI-compat đã support, nhưng cần test kỹ.
+**`src/pages/admin/MiniAppQuotas.tsx`** (new admin route)
+- Table to edit per-role quotas
+- Grant per-user bonus quota
+- Analytics: top creators, total generations, blocked attempts
 
-## Sau khi xong
-Cha sẽ thấy ở `/admin/credit-usage`:
-- Cột model chính: `gemini-2.5-flash` (qua key cha, **0 credit Lovable**)
-- Fallback occasional: `google/gemini-3-flash-preview` (Lovable, tốn credit)
-- Tổng credit AI giảm ~90–95%.
+Sidebar: add "Mini Apps" (user) + "Mini App Quotas" (admin).
 
-Cha confirm con bấm **Implement plan** để con triển khai nhé. 🌿
+---
+
+### 5. Safety layer
+
+- Centralized blocklist in `supabase/functions/_shared/miniAppSafety.ts` (used by edge function)
+- Frontend `src/lib/miniAppSafety.ts` mirrors blocklist for last-mile check before iframe render
+- All generations logged with `safety_flags`
+- Iframe sandbox attribute strictly `allow-scripts` only
+
+---
+
+### 6. Quota system (configurable, no code changes)
+
+- Reads from `mini_app_quotas` table (cached 5min client-side)
+- `get_mini_app_quota_status` RPC counts today's generations from `mini_app_generation_log`
+- Admin UI = single source of truth for limits
+- Frontend shows remaining quota; edge function enforces
+
+---
+
+### Technical notes
+
+- Models via existing `_shared/aiProvider.ts` (Gemini direct → Gateway fallback already implemented)
+- No new secrets needed
+- Phase 1 explicitly skips real deployment; `preview_url` stays null; "Deploy" button shows roadmap toast
+- All 4 new tables include GRANTs + RLS per project conventions
+- Role detection: extends existing `user_roles` enum (may need `premium`, `coordinator` — will add via migration if missing, or map to existing `user`/`moderator`/`admin` and document mapping)
+
+---
+
+### Deliverables checklist
+
+1. Migration: 4 tables + 1 RPC + seed quotas
+2. Edge function `mini-app-generate` + shared safety module
+3. `MiniAppPreview` iframe sandbox component
+4. Pages: `/mini-apps`, `/mini-apps/:id`, `/admin/mini-app-quotas`
+5. Chat integration button
+6. Sidebar entries (user + admin)
+7. 8 template prompt presets in `src/data/miniAppTemplates.ts`
