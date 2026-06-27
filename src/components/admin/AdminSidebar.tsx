@@ -12,7 +12,8 @@ import {
   BarChart3,
   Bug,
   Lock,
-  Wallet
+  Wallet,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ const adminNavItems = [
   { title: 'Credit Usage', url: '/admin/credit-usage', icon: Wallet },
   { title: 'RAG Debugger', url: '/admin/rag-debug', icon: Bug },
   { title: 'Application Keys', url: '/admin/security/application-keys', icon: Lock },
+  { title: 'Mini App Quotas', url: '/admin/mini-app-quotas', icon: Sparkles },
 ];
 
 

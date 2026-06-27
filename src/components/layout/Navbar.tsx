@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, MessageCircle, BookOpen, User, Menu, X, Scroll, Crown } from 'lucide-react';
+import { Home, MessageCircle, BookOpen, User, Menu, X, Scroll, Crown, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useUserStore } from '@/stores/userStore';
@@ -11,6 +11,7 @@ import angelLogo from '@/assets/angel-logo.png';
 const publicNavLinks = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/chat', label: 'Chat', icon: MessageCircle },
+  { path: '/mini-apps', label: 'Mini Apps', icon: Sparkles },
   { path: '/cto', label: 'CTO', icon: Crown },
   { path: '/light-constitution', label: 'Hiến Pháp', icon: Scroll },
   { path: '/profile', label: 'Profile', icon: User },
