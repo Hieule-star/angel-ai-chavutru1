@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Key, Search, Trash2, RefreshCw, Loader2 } from 'lucide-react';
+import { Key, Search, Trash2, RefreshCw, Loader2, Copy, Code2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface ApiKey {
