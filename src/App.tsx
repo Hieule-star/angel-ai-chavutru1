@@ -34,6 +34,7 @@ import InternalAuth from "./pages/docs/InternalAuth";
 import MiniApps from "./pages/MiniApps";
 import MiniAppBuilder from "./pages/MiniAppBuilder";
 import MiniAppQuotas from "./pages/admin/MiniAppQuotas";
+import Integration from "./pages/Integration";
 
 const queryClient = new QueryClient();
 
