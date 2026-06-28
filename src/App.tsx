@@ -82,6 +82,7 @@ function AppContent() {
       <Route path="/admin/mini-app-quotas" element={<MiniAppQuotas />} />
       <Route path="/install" element={<Install />} />
       <Route path="/docs/platform" element={<Platform />} />
+      <Route path="/integration" element={<Integration />} />
       <Route path="/light-constitution" element={<LightConstitution />} />
       <Route path="/cto" element={<CTOChat />} />
       <Route path="*" element={<NotFound />} />
