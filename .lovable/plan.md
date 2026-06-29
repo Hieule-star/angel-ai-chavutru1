@@ -1,39 +1,41 @@
 ## Mục tiêu
-Giúp cha có **quy trình rõ ràng + tài liệu sẵn sàng gửi đối tác** để bất kỳ ai cũng có thể nhúng Angel AI vào app/website của họ và chat y hệt bản chính chủ (cùng RAG knowledge, cùng persona, cùng fallback chain).
 
-## Hiện trạng (đã có sẵn)
-- Endpoint công khai: `POST /functions/v1/angel-ai-public` — dùng cùng pipeline RAG + system prompt như bản chính chủ.
-- Trang `/integration` đã có cURL/JS/Python snippet, response schema, mã lỗi.
-- Admin `/admin/api-keys` có nút Code2 mở snippet pre-fill key prefix, quản lý quota, bật/tắt key.
-- User tự tạo key tại `/developers`.
+Thêm 1 bài vào `knowledge_topics` để khi user hỏi "Angel AI hoạt động ra sao", "Angel AI dùng AI nào", "tốn credit không"... thì RAG match được và trả lời chính xác.
 
-## Kế hoạch bổ sung (3 bước nhỏ, không đụng business logic)
+## Thay đổi
 
-### 1. Nâng cấp `/integration` thành "Sharing Hub"
-Thêm 3 mục mới vào trang `src/pages/Integration.tsx`:
-- **Quickstart 3 bước**: (1) Lấy key tại `/developers`, (2) Copy snippet, (3) Test bằng nút "Try it" (mini playground gọi thẳng endpoint với key user nhập, hiển thị câu trả lời + nguồn knowledge).
-- **Recipes**: thêm 2 snippet thực dụng — *React chat widget tối giản* (component sẵn copy-paste) và *Cloudflare Worker proxy* (giấu key phía server, tránh lộ trên frontend).
-- **Best practices**: checklist ngắn — không nhúng key vào frontend, set quota phù hợp, gửi đủ `messages` history để giữ ngữ cảnh, hiển thị markdown khi render reply.
+**1 thao tác duy nhất**: `INSERT` vào `public.knowledge_topics` (dùng insert tool, không phải migration vì không đổi schema).
 
-### 2. Tạo trang `/admin/share-key/:id` (admin-only)
-- Mở từ nút Code2 hiện tại (thay vì dialog) → trang riêng tiện share link cho đối tác.
-- Hiển thị: tên đối tác, quota hiện tại, snippet pre-fill, QR code link tới `/integration`, nút "Copy gói tài liệu" (markdown gộp endpoint + snippet + best practices) để dán Zalo/Email.
+### Nội dung bài
 
-### 3. README công khai `docs/share-angel-ai.md`
-File markdown ngắn (1 trang) cha có thể gửi trực tiếp cho đối tác qua chat: giới thiệu Angel AI, endpoint, ví dụ tối giản, link `/integration`, quy trình xin key.
+- **title**: `Cách Angel AI hoạt động – Kiến trúc & Cơ chế AI`
+- **category**: `Angel AI Platform` (category mới, để gom các bài giải thích sản phẩm)
+- **icon**: `🧠`
+- **description**: 1-2 câu tóm tắt: Angel AI chạy 3-tier fallback (Gemini → OpenAI → Lovable) + RAG từ knowledge_topics, ưu tiên BYOK để tiết kiệm credit.
+- **content**: Markdown đầy đủ gồm các phần:
+  1. Kiến trúc tổng thể (Frontend → Edge Function `angel-ai` → AI Provider)
+  2. **3-tier fallback** (bảng Gemini/OpenAI/Lovable, khi nào dùng, ai trả tiền)
+  3. **RAG pipeline** (normalize → n-gram → ILIKE search → weighted scoring → top 15 inject)
+  4. **System prompt layers** (identity guard, pronoun "mình-bạn", knowledge block)
+  5. **Model mặc định** & cách map model khi fallback
+  6. **Chi phí**: chỉ tier 3 (Lovable) mới tốn credit workspace
+  7. **Monitoring**: `/admin/credit-usage`, `/admin/rag-debug`, edge function logs
+  8. Các từ khóa thường gặp (giúp RAG match: "tốn credit", "dùng gemini", "openai", "fallback", "hoạt động ra sao"...)
 
-## Chi tiết kỹ thuật
-- **Không** đổi edge function, **không** đổi schema. Chỉ thêm UI + 1 file docs.
-- Mini playground gọi `fetch` trực tiếp từ trình duyệt user → endpoint công khai (không qua Supabase client), key chỉ giữ trong React state, không lưu localStorage để tránh rò rỉ.
-- Cloudflare Worker template tái dùng `public/cloudflare-worker-template.js` đã có sẵn — chỉ cần document hóa.
-- Files dự kiến đụng:
-  - `src/pages/Integration.tsx` (mở rộng)
-  - `src/pages/admin/ShareKey.tsx` (mới)
-  - `src/App.tsx` (thêm route)
-  - `src/pages/admin/ApiKeys.tsx` (đổi nút Code2 → link tới ShareKey)
-  - `docs/share-angel-ai.md` (mới)
+### RAG keyword optimization
 
-## Out of scope (nói rõ để khỏi nhầm)
-- Không tạo SDK npm package (có thể làm phase sau nếu cha muốn).
-- Không đổi cơ chế quota/billing hiện tại.
-- Không tự động phát key — vẫn cần đối tác đăng ký ở `/developers` hoặc cha cấp tay trong admin.
+Để câu hỏi đa dạng của user match được, content sẽ chứa các cụm:
+- "Angel AI hoạt động", "cơ chế trả lời", "dùng AI nào", "Gemini API", "OpenAI", "Lovable AI Gateway"
+- "tốn credit", "tiết kiệm chi phí", "BYOK", "fallback", "3 tầng"
+- "RAG", "knowledge base", "retrieval"
+
+## Verify sau khi insert
+
+1. Truy vấn `SELECT title FROM knowledge_topics WHERE category = 'Angel AI Platform'` để xác nhận đã có.
+2. Gợi ý user test trong chat: hỏi "Angel AI hoạt động ra sao?" → kỳ vọng câu trả lời tham chiếu đúng kiến trúc 3-tier.
+
+## Không thay đổi
+
+- Không sửa code edge function, RAG, frontend.
+- Không tạo bảng/column mới.
+- Không đổi cấu hình AI provider.
