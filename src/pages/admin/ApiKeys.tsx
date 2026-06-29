@@ -290,19 +290,11 @@ export default function ApiKeys() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="icon" title="Snippet tích hợp">
-                                <Code2 className="w-4 h-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-2xl">
-                              <DialogHeader>
-                                <DialogTitle>Snippet tích hợp cho {apiKey.name}</DialogTitle>
-                              </DialogHeader>
-                              <SnippetPanel keyPrefix={apiKey.key_prefix} />
-                            </DialogContent>
-                          </Dialog>
+                          <Button asChild variant="ghost" size="icon" title="Chia sẻ tích hợp">
+                            <Link to={`/admin/share-key/${apiKey.id}`}>
+                              <Share2 className="w-4 h-4" />
+                            </Link>
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
