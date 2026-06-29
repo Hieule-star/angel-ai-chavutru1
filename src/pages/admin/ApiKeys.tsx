@@ -22,7 +22,8 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Key, Search, Trash2, RefreshCw, Loader2, Copy, Code2 } from 'lucide-react';
+import { Key, Search, Trash2, RefreshCw, Loader2, Share2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 
 interface ApiKey {
@@ -289,19 +290,11 @@ export default function ApiKeys() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="icon" title="Snippet tích hợp">
-                                <Code2 className="w-4 h-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-2xl">
-                              <DialogHeader>
-                                <DialogTitle>Snippet tích hợp cho {apiKey.name}</DialogTitle>
-                              </DialogHeader>
-                              <SnippetPanel keyPrefix={apiKey.key_prefix} />
-                            </DialogContent>
-                          </Dialog>
+                          <Button asChild variant="ghost" size="icon" title="Chia sẻ tích hợp">
+                            <Link to={`/admin/share-key/${apiKey.id}`}>
+                              <Share2 className="w-4 h-4" />
+                            </Link>
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -324,50 +317,3 @@ export default function ApiKeys() {
   );
 }
 
-function SnippetPanel({ keyPrefix }: { keyPrefix: string }) {
-  const { toast } = useToast();
-  const endpoint = "https://sasbfslupxdsaqifnqzx.supabase.co/functions/v1/angel-ai-public";
-  const placeholder = `${keyPrefix}...REPLACE_WITH_FULL_KEY`;
-  const curl = `curl -X POST ${endpoint} \\
-  -H "Authorization: Bearer ${placeholder}" \\
-  -H "Content-Type: application/json" \\
-  -d '{"messages":[{"role":"user","content":"Giải thích 8 Thần Chú"}]}'`;
-  const js = `await fetch("${endpoint}", {
-  method: "POST",
-  headers: {
-    "Authorization": "Bearer ${placeholder}",
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    messages: [{ role: "user", content: "Giải thích 8 Thần Chú" }],
-  }),
-});`;
-  const copy = (t: string) => {
-    navigator.clipboard.writeText(t);
-    toast({ title: "Đã copy ✨" });
-  };
-  return (
-    <div className="space-y-4 pt-2">
-      <p className="text-sm text-muted-foreground">
-        Vì bảo mật, chỉ key prefix được hiển thị. Thay <code className="bg-muted px-1 rounded">REPLACE_WITH_FULL_KEY</code> bằng key đầy đủ đã gửi cho đối tác lúc tạo.
-      </p>
-      {[
-        { label: "cURL", code: curl },
-        { label: "JavaScript", code: js },
-      ].map(({ label, code }) => (
-        <div key={label} className="space-y-1">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">{label}</p>
-            <Button size="sm" variant="ghost" onClick={() => copy(code)}>
-              <Copy className="w-3.5 h-3.5 mr-1" /> Copy
-            </Button>
-          </div>
-          <pre className="bg-muted rounded p-3 text-xs overflow-x-auto"><code>{code}</code></pre>
-        </div>
-      ))}
-      <p className="text-xs text-muted-foreground">
-        Xem hướng dẫn đầy đủ cho đối tác tại <a className="text-primary underline" href="/integration" target="_blank" rel="noreferrer">/integration</a>.
-      </p>
-    </div>
-  );
-}

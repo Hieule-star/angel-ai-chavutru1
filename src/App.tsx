@@ -35,6 +35,7 @@ import MiniApps from "./pages/MiniApps";
 import MiniAppBuilder from "./pages/MiniAppBuilder";
 import MiniAppQuotas from "./pages/admin/MiniAppQuotas";
 import Integration from "./pages/Integration";
+import ShareKey from "./pages/admin/ShareKey";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,7 @@ function AppContent() {
       <Route path="/admin/chat" element={<ChatAnalytics />} />
       <Route path="/admin/roles" element={<RoleManagement />} />
       <Route path="/admin/api-keys" element={<ApiKeys />} />
+      <Route path="/admin/share-key/:id" element={<ShareKey />} />
       <Route path="/admin/api-analytics" element={<ApiAnalytics />} />
       <Route path="/admin/credit-usage" element={<CreditUsage />} />
       <Route path="/admin/rag-debug" element={<RagDebug />} />
