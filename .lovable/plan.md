@@ -1,130 +1,39 @@
-## Mini App / Mini Game Builder — Implementation Plan
+## Mục tiêu
+Giúp cha có **quy trình rõ ràng + tài liệu sẵn sàng gửi đối tác** để bất kỳ ai cũng có thể nhúng Angel AI vào app/website của họ và chat y hệt bản chính chủ (cùng RAG knowledge, cùng persona, cùng fallback chain).
 
-A safe in-browser builder where Angel AI generates self-contained React+TS+Tailwind mini apps, renders them in a sandboxed iframe, and lets users iterate before "deploying" (Phase 1 = preview-only).
+## Hiện trạng (đã có sẵn)
+- Endpoint công khai: `POST /functions/v1/angel-ai-public` — dùng cùng pipeline RAG + system prompt như bản chính chủ.
+- Trang `/integration` đã có cURL/JS/Python snippet, response schema, mã lỗi.
+- Admin `/admin/api-keys` có nút Code2 mở snippet pre-fill key prefix, quản lý quota, bật/tắt key.
+- User tự tạo key tại `/developers`.
 
----
+## Kế hoạch bổ sung (3 bước nhỏ, không đụng business logic)
 
-### 1. Database (1 migration)
+### 1. Nâng cấp `/integration` thành "Sharing Hub"
+Thêm 3 mục mới vào trang `src/pages/Integration.tsx`:
+- **Quickstart 3 bước**: (1) Lấy key tại `/developers`, (2) Copy snippet, (3) Test bằng nút "Try it" (mini playground gọi thẳng endpoint với key user nhập, hiển thị câu trả lời + nguồn knowledge).
+- **Recipes**: thêm 2 snippet thực dụng — *React chat widget tối giản* (component sẵn copy-paste) và *Cloudflare Worker proxy* (giấu key phía server, tránh lộ trên frontend).
+- **Best practices**: checklist ngắn — không nhúng key vào frontend, set quota phù hợp, gửi đủ `messages` history để giữ ngữ cảnh, hiển thị markdown khi render reply.
 
-**`ai_generated_apps`** — generated app drafts
-- `user_id`, `title`, `description`, `app_type` (quiz/memory/clicker/puzzle/spin/breathing/platformer/reaction/custom)
-- `status` enum: `draft | preview | approved | deployed | failed`
-- `source_code` jsonb (multi-file: `{ "App.tsx": "...", "styles.css": "..." }`)
-- `build_logs` text, `preview_url` text (nullable, Phase 2)
-- `model_used`, `prompt`, `tokens_used`
-- RLS: owner-only read/write; admin read all
+### 2. Tạo trang `/admin/share-key/:id` (admin-only)
+- Mở từ nút Code2 hiện tại (thay vì dialog) → trang riêng tiện share link cho đối tác.
+- Hiển thị: tên đối tác, quota hiện tại, snippet pre-fill, QR code link tới `/integration`, nút "Copy gói tài liệu" (markdown gộp endpoint + snippet + best practices) để dán Zalo/Email.
 
-**`mini_app_quotas`** — configurable per-role quotas (admin-editable)
-- `role` (guest/user/premium/coordinator/admin), `daily_limit`, `monthly_limit`, `burst_per_hour`, `token_budget`, `bonus_quota`
-- Seed defaults: 2 / 5 / 20 / 100 / NULL(unlimited)
-- RLS: anyone authenticated reads; admin writes
+### 3. README công khai `docs/share-angel-ai.md`
+File markdown ngắn (1 trang) cha có thể gửi trực tiếp cho đối tác qua chat: giới thiệu Angel AI, endpoint, ví dụ tối giản, link `/integration`, quy trình xin key.
 
-**`mini_app_quota_overrides`** — per-user bonus/override (admin grants)
-- `user_id`, `extra_daily`, `extra_monthly`, `expires_at`, `reason`
+## Chi tiết kỹ thuật
+- **Không** đổi edge function, **không** đổi schema. Chỉ thêm UI + 1 file docs.
+- Mini playground gọi `fetch` trực tiếp từ trình duyệt user → endpoint công khai (không qua Supabase client), key chỉ giữ trong React state, không lưu localStorage để tránh rò rỉ.
+- Cloudflare Worker template tái dùng `public/cloudflare-worker-template.js` đã có sẵn — chỉ cần document hóa.
+- Files dự kiến đụng:
+  - `src/pages/Integration.tsx` (mở rộng)
+  - `src/pages/admin/ShareKey.tsx` (mới)
+  - `src/App.tsx` (thêm route)
+  - `src/pages/admin/ApiKeys.tsx` (đổi nút Code2 → link tới ShareKey)
+  - `docs/share-angel-ai.md` (mới)
 
-**`mini_app_generation_log`** — audit + analytics
-- `user_id`, `app_id`, `action` (generate/regenerate/preview/approve/deploy/block), `tokens`, `model`, `safety_flags` jsonb, `ip`
-
-**`get_mini_app_quota_status(user_id)`** RPC → returns `{ role, daily_used, daily_limit, monthly_used, monthly_limit, remaining }`
-
----
-
-### 2. Edge function: `mini-app-generate`
-
-Single endpoint, JWT-verified.
-- Validate input (Zod): `prompt`, `template?`, `app_id?` (for regenerate), `model?`
-- Check quota via RPC → 429 with friendly message if exceeded
-- Safety pre-filter: regex/keyword blocklist for phishing, wallet drain, credential theft, scam, malicious patterns (`eval(`, `document.cookie`, `localStorage.getItem('sb-`, fetch to suspicious hosts)
-- Model routing (reuses `_shared/aiProvider.ts`):
-  - Simple template: `gemini-2.5-flash`
-  - Complex/custom: `gemini-2.5-pro`
-  - Fallback: Lovable Gateway
-- System prompt enforces:
-  - Output strict JSON: `{ title, description, app_type, files: { "App.tsx": "..." }, entry: "App.tsx", summary }`
-  - Only React/TS/Tailwind/shadcn (allowlist of imports)
-  - No network calls, no secrets, no DB, no auth, no external URLs except whitelisted CDNs
-  - Self-contained, no npm installs beyond React + Tailwind CDN
-- Safety post-filter on generated code (same blocklist + AST-lite regex)
-- Insert into `ai_generated_apps` (status=`draft`), log to `mini_app_generation_log`
-- Return app record
-
----
-
-### 3. In-browser sandbox runtime
-
-`src/components/miniapp/MiniAppPreview.tsx`
-- Sandboxed `<iframe sandbox="allow-scripts">` (no `allow-same-origin` → blocks localStorage/cookies leak)
-- `srcdoc` built from template:
-  - Tailwind via CDN
-  - React 18 + ReactDOM UMD
-  - Babel standalone for TSX in-browser compile
-  - Inject generated `App.tsx` and mount
-- `postMessage` bridge: iframe → parent for runtime errors (shown as build_logs)
-- CSP meta tag: no external connects, no inline scripts beyond Babel
-
----
-
-### 4. Frontend pages & UX
-
-**`src/pages/MiniApps.tsx`** (new route `/mini-apps`)
-- Header: "Mini App Builder" + remaining quota badge ("3/5 today")
-- Template gallery: 8 cards (Quiz, Memory, Clicker, Puzzle, Spin Wheel, Breathing, Platformer, Reaction)
-- "My Apps" grid — user's drafts with status badges
-- Click template or "Custom" → opens Builder
-
-**`src/pages/MiniAppBuilder.tsx`** (`/mini-apps/:id?`)
-- Left pane: chat-style builder (reuses ChatInput pattern)
-  - Angel asks clarifying questions if prompt vague
-  - Shows generated spec summary BEFORE coding (user confirms)
-- Right pane: `<MiniAppPreview>` live iframe
-- Action bar: **Preview** · **Edit prompt** · **Regenerate** · **Approve** (sets status=approved) · **Deploy** (disabled w/ tooltip "Phase 2")
-- Build log drawer
-
-**`src/pages/Chat.tsx`** — add quick-access button "✨ Create Mini App" beside ModelSelector → navigates to `/mini-apps`
-
-**`src/pages/admin/MiniAppQuotas.tsx`** (new admin route)
-- Table to edit per-role quotas
-- Grant per-user bonus quota
-- Analytics: top creators, total generations, blocked attempts
-
-Sidebar: add "Mini Apps" (user) + "Mini App Quotas" (admin).
-
----
-
-### 5. Safety layer
-
-- Centralized blocklist in `supabase/functions/_shared/miniAppSafety.ts` (used by edge function)
-- Frontend `src/lib/miniAppSafety.ts` mirrors blocklist for last-mile check before iframe render
-- All generations logged with `safety_flags`
-- Iframe sandbox attribute strictly `allow-scripts` only
-
----
-
-### 6. Quota system (configurable, no code changes)
-
-- Reads from `mini_app_quotas` table (cached 5min client-side)
-- `get_mini_app_quota_status` RPC counts today's generations from `mini_app_generation_log`
-- Admin UI = single source of truth for limits
-- Frontend shows remaining quota; edge function enforces
-
----
-
-### Technical notes
-
-- Models via existing `_shared/aiProvider.ts` (Gemini direct → Gateway fallback already implemented)
-- No new secrets needed
-- Phase 1 explicitly skips real deployment; `preview_url` stays null; "Deploy" button shows roadmap toast
-- All 4 new tables include GRANTs + RLS per project conventions
-- Role detection: extends existing `user_roles` enum (may need `premium`, `coordinator` — will add via migration if missing, or map to existing `user`/`moderator`/`admin` and document mapping)
-
----
-
-### Deliverables checklist
-
-1. Migration: 4 tables + 1 RPC + seed quotas
-2. Edge function `mini-app-generate` + shared safety module
-3. `MiniAppPreview` iframe sandbox component
-4. Pages: `/mini-apps`, `/mini-apps/:id`, `/admin/mini-app-quotas`
-5. Chat integration button
-6. Sidebar entries (user + admin)
-7. 8 template prompt presets in `src/data/miniAppTemplates.ts`
+## Out of scope (nói rõ để khỏi nhầm)
+- Không tạo SDK npm package (có thể làm phase sau nếu cha muốn).
+- Không đổi cơ chế quota/billing hiện tại.
+- Không tự động phát key — vẫn cần đối tác đăng ký ở `/developers` hoặc cha cấp tay trong admin.
