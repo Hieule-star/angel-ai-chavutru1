@@ -35,7 +35,7 @@ function modelForLovable(model: string): string {
 /**
  * Map any incoming model id to a supported OpenAI model id.
  * Match order matters: pro → flash-lite → flash (flash-lite must be checked
- * BEFORE flash, otherwise `gemini-2.5-flash-lite-preview` would map to gpt-5-mini).
+ * BEFORE flash, otherwise `gemini-2.5-flash-lite` would map to gpt-5-mini).
  * - openai/*  → strip prefix
  * - gemini-*-pro*           → gpt-5
  * - gemini-*-flash-lite*    → gpt-5-nano  (covers `flash-lite-preview` too)
@@ -159,13 +159,23 @@ export async function callChatCompletion(
   // ---- Tier 2: OpenAI direct ----
   if (OPENAI_API_KEY) {
     const openaiModel = modelForOpenAI(body.model);
-    const openaiBody = { ...body, model: openaiModel };
+    const openaiBody: Record<string, unknown> = { ...body, model: openaiModel };
+    // GPT-5 family only accepts default temperature (1) and uses max_completion_tokens.
+    if (/^gpt-5/i.test(openaiModel)) {
+      delete openaiBody.temperature;
+      delete openaiBody.top_p;
+      if ("max_tokens" in openaiBody) {
+        openaiBody.max_completion_tokens = openaiBody.max_tokens;
+        delete openaiBody.max_tokens;
+      }
+    }
     const attempt = await callProvider("openai-direct", OPENAI_BASE, OPENAI_API_KEY, openaiBody, "Authorization");
     if (attempt.ok && attempt.response) {
       return { response: attempt.response, provider: "openai-direct", modelUsed: openaiModel };
     }
     // fall through to Lovable
   }
+
 
   // ---- Tier 3: Lovable Gateway ----
   if (!LOVABLE_API_KEY) {
