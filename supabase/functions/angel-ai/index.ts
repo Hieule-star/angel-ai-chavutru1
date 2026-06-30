@@ -1000,7 +1000,7 @@ type SelectionMode = 'auto' | 'fast' | 'deep';
 
 function selectModelBasedOnMode(mode: SelectionMode, message: string): string {
   if (mode === 'fast') {
-    return "google/gemini-2.5-flash";
+    return "google/gemini-2.5-flash-lite-preview";
   }
   
   if (mode === 'deep') {
@@ -1012,8 +1012,8 @@ function selectModelBasedOnMode(mode: SelectionMode, message: string): string {
   const hasDeepKeywords = DEEP_KEYWORDS.some(keyword => lowerMessage.includes(keyword));
   
   if (messageLength < 300 && !hasDeepKeywords) {
-    console.log("Auto selection: SHORT & SIMPLE → google/gemini-2.5-flash");
-    return "google/gemini-2.5-flash";
+    console.log("Auto selection: SHORT & SIMPLE → google/gemini-2.5-flash-lite-preview");
+    return "google/gemini-2.5-flash-lite-preview";
   }
   
   if (messageLength > 1000 || hasDeepKeywords) {
