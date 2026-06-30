@@ -1,41 +1,34 @@
 ## Mục tiêu
+Thêm model `google/gemini-2.5-flash-lite-preview` vào danh sách model app sử dụng, và đặt nó làm model mặc định thay cho `google/gemini-2.5-flash`.
 
-Thêm 1 bài vào `knowledge_topics` để khi user hỏi "Angel AI hoạt động ra sao", "Angel AI dùng AI nào", "tốn credit không"... thì RAG match được và trả lời chính xác.
+## Các file sẽ thay đổi
 
-## Thay đổi
+### 1. `src/types/index.ts`
+Mở rộng union `AIModel` để thêm `'google/gemini-2.5-flash-lite-preview'`.
 
-**1 thao tác duy nhất**: `INSERT` vào `public.knowledge_topics` (dùng insert tool, không phải migration vì không đổi schema).
+### 2. `src/components/chat/ModelSelector.tsx`
+Thêm entry vào `MODEL_INFO` cho `'google/gemini-2.5-flash-lite-preview'` (icon `Zap`, name `"Flash Lite"`, màu `text-cyan-500`). Đổi fallback ở cuối `getModelDisplayInfo` từ `gemini-2.5-flash` sang `gemini-2.5-flash-lite-preview`.
 
-### Nội dung bài
+### 3. `src/components/chat/ChatBubble.tsx`
+Thêm `case 'google/gemini-2.5-flash-lite-preview'` trong `getModelBadge` với badge `{ icon: <Zap/>, name: 'Flash Lite', color: 'text-cyan-500' }`.
 
-- **title**: `Cách Angel AI hoạt động – Kiến trúc & Cơ chế AI`
-- **category**: `Angel AI Platform` (category mới, để gom các bài giải thích sản phẩm)
-- **icon**: `🧠`
-- **description**: 1-2 câu tóm tắt: Angel AI chạy 3-tier fallback (Gemini → OpenAI → Lovable) + RAG từ knowledge_topics, ưu tiên BYOK để tiết kiệm credit.
-- **content**: Markdown đầy đủ gồm các phần:
-  1. Kiến trúc tổng thể (Frontend → Edge Function `angel-ai` → AI Provider)
-  2. **3-tier fallback** (bảng Gemini/OpenAI/Lovable, khi nào dùng, ai trả tiền)
-  3. **RAG pipeline** (normalize → n-gram → ILIKE search → weighted scoring → top 15 inject)
-  4. **System prompt layers** (identity guard, pronoun "mình-bạn", knowledge block)
-  5. **Model mặc định** & cách map model khi fallback
-  6. **Chi phí**: chỉ tier 3 (Lovable) mới tốn credit workspace
-  7. **Monitoring**: `/admin/credit-usage`, `/admin/rag-debug`, edge function logs
-  8. Các từ khóa thường gặp (giúp RAG match: "tốn credit", "dùng gemini", "openai", "fallback", "hoạt động ra sao"...)
+### 4. `supabase/functions/angel-ai/index.ts` (backend default)
+- Thêm `'google/gemini-2.5-flash-lite-preview'` vào `SUPPORTED_MODELS`.
+- Thêm mapping vào `LOVABLE_TO_OPENAI_MODEL`: `'google/gemini-2.5-flash-lite-preview' → 'gpt-4o-mini'`.
+- Trong `selectModelBasedOnMode`:
+  - Mode `fast` → trả về `google/gemini-2.5-flash-lite-preview` (thay cho `gemini-2.5-flash`).
+  - Auto SHORT & SIMPLE → trả về `google/gemini-2.5-flash-lite-preview`.
+  - Auto MEDIUM (fallback cuối) → giữ `google/gemini-2.5-flash` cho câu hỏi vừa.
 
-### RAG keyword optimization
+### 5. `supabase/functions/_shared/aiProvider.ts` (xác nhận mapping)
+Logic hiện tại đã hỗ trợ id mới mà không cần đổi:
+- `modelForGemini`: strip `google/` → `gemini-2.5-flash-lite-preview` (Gemini Direct nhận đúng).
+- `modelForOpenAI`: regex `/flash-lite/i` khớp → `gpt-5-nano` (đúng tier nhẹ).
+- `modelForLovable`: trả về nguyên `google/gemini-2.5-flash-lite-preview`.
 
-Để câu hỏi đa dạng của user match được, content sẽ chứa các cụm:
-- "Angel AI hoạt động", "cơ chế trả lời", "dùng AI nào", "Gemini API", "OpenAI", "Lovable AI Gateway"
-- "tốn credit", "tiết kiệm chi phí", "BYOK", "fallback", "3 tầng"
-- "RAG", "knowledge base", "retrieval"
+Sẽ thêm comment ngắn ngay phía trên `modelForOpenAI` ghi rõ thứ tự match (pro → flash-lite → flash) để tránh hồi quy khi thêm model mới sau này.
 
-## Verify sau khi insert
-
-1. Truy vấn `SELECT title FROM knowledge_topics WHERE category = 'Angel AI Platform'` để xác nhận đã có.
-2. Gợi ý user test trong chat: hỏi "Angel AI hoạt động ra sao?" → kỳ vọng câu trả lời tham chiếu đúng kiến trúc 3-tier.
-
-## Không thay đổi
-
-- Không sửa code edge function, RAG, frontend.
-- Không tạo bảng/column mới.
-- Không đổi cấu hình AI provider.
+## Lưu ý
+- Không đổi `generate-chat-title`, `angel-ai-public`, `rag-debug` (giữ `gemini-2.5-flash` cho ổn định/đã được kiểm chứng).
+- Không đụng `mini-app-generate` (model whitelist riêng).
+- Sau khi merge cần deploy lại edge function `angel-ai`.

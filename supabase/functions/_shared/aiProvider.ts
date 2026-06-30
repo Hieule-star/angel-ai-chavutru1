@@ -34,9 +34,11 @@ function modelForLovable(model: string): string {
 }
 /**
  * Map any incoming model id to a supported OpenAI model id.
+ * Match order matters: pro → flash-lite → flash (flash-lite must be checked
+ * BEFORE flash, otherwise `gemini-2.5-flash-lite-preview` would map to gpt-5-mini).
  * - openai/*  → strip prefix
  * - gemini-*-pro*           → gpt-5
- * - gemini-*-flash-lite     → gpt-5-nano
+ * - gemini-*-flash-lite*    → gpt-5-nano  (covers `flash-lite-preview` too)
  * - gemini-*-flash*         → gpt-5-mini
  * - default                 → gpt-5-mini
  */
