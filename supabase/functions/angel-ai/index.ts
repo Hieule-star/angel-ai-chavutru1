@@ -999,30 +999,12 @@ const DEEP_KEYWORDS = [
 type SelectionMode = 'auto' | 'fast' | 'deep';
 
 function selectModelBasedOnMode(mode: SelectionMode, message: string): string {
-  if (mode === 'fast') {
-    return "google/gemini-2.5-flash-lite-preview";
-  }
-  
-  if (mode === 'deep') {
-    return "openai/gpt-5";
-  }
-  
-  const messageLength = message.length;
-  const lowerMessage = message.toLowerCase();
-  const hasDeepKeywords = DEEP_KEYWORDS.some(keyword => lowerMessage.includes(keyword));
-  
-  if (messageLength < 300 && !hasDeepKeywords) {
-    console.log("Auto selection: SHORT & SIMPLE → google/gemini-2.5-flash-lite-preview");
-    return "google/gemini-2.5-flash-lite-preview";
-  }
-  
-  if (messageLength > 1000 || hasDeepKeywords) {
-    console.log("Auto selection: DEEP/COMPLEX → openai/gpt-5");
-    return "openai/gpt-5";
-  }
-  
-  console.log("Auto selection: MEDIUM → openai/gpt-5-mini");
-  return "openai/gpt-5-mini";
+  // Unified default: gemini-2.5-flash-lite-preview cho mọi mode & mọi độ dài câu hỏi.
+  // Không còn fallback về gemini-2.5-flash, gpt-5-mini hay gpt-5 nữa.
+  void mode;
+  void message;
+  console.log("Model selection: → google/gemini-2.5-flash-lite-preview (unified default)");
+  return "google/gemini-2.5-flash-lite-preview";
 }
 
 // ==================================================
