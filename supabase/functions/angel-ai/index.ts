@@ -936,6 +936,7 @@ function detectPronounStyleFromSingleMessage(content: string): PronounStyle {
 // MODEL SELECTION
 // ==================================================
 const SUPPORTED_MODELS = [
+  "google/gemini-2.5-flash-lite-preview",
   "google/gemini-2.5-flash",
   "google/gemini-2.5-pro",
   "openai/gpt-5-mini",
@@ -949,6 +950,7 @@ const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
 // Model mapping: Lovable AI → OpenAI equivalent
 const LOVABLE_TO_OPENAI_MODEL: Record<string, string> = {
+  'google/gemini-2.5-flash-lite-preview': 'gpt-4o-mini',
   'google/gemini-2.5-flash': 'gpt-4o-mini',
   'google/gemini-2.5-pro': 'gpt-4o',
   'openai/gpt-5-mini': 'gpt-4o-mini',
