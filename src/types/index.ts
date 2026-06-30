@@ -7,7 +7,7 @@ export interface User {
   created_at: string;
 }
 
-export type AIModel = 'google/gemini-2.5-flash' | 'google/gemini-2.5-pro' | 'openai/gpt-5-mini' | 'openai/gpt-5';
+export type AIModel = 'google/gemini-2.5-flash-lite-preview' | 'google/gemini-2.5-flash' | 'google/gemini-2.5-pro' | 'openai/gpt-5-mini' | 'openai/gpt-5';
 
 export type SelectionMode = 'auto' | 'fast' | 'deep';
 
