@@ -951,6 +951,7 @@ const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
 // Model mapping: Lovable AI → OpenAI equivalent
 const LOVABLE_TO_OPENAI_MODEL: Record<string, string> = {
+  'google/gemini-3.1-flash-lite': 'gpt-4o-mini',
   'google/gemini-2.5-flash-lite': 'gpt-4o-mini',
   'google/gemini-2.5-flash': 'gpt-4o-mini',
   'google/gemini-2.5-pro': 'gpt-4o',
