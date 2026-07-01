@@ -1,35 +1,35 @@
-## Nguyên nhân
+## Mục tiêu
+Đặt **Gemini 3.1 Flash Lite** (`google/gemini-3.1-flash-lite`) làm model mặc định cho toàn bộ Angel AI, thay cho `google/gemini-2.5-flash-lite` hiện tại.
 
-Sau khi thêm `google/gemini-2.5-flash-lite-preview` làm default, mọi request đều fail vì model này **không tồn tại** ở cả 3 provider. Log xác nhận:
+## Thay đổi
 
-- Gemini Direct → 404 `models/gemini-2.5-flash-lite-preview is not found`
-- OpenAI Direct → 400 `temperature does not support 0.7 with this model` (gpt-5-nano chỉ chấp nhận temperature = 1, không phải 0.7)
-- Lovable Gateway → 400 `invalid model` (allowlist chỉ có `google/gemini-2.5-flash-lite`, không có `-preview`)
+### 1. `src/types/index.ts`
+- Thêm `'google/gemini-3.1-flash-lite'` vào union `AIModel`.
+- Giữ các model cũ để tương thích lịch sử chat.
 
-Tên model đúng là **`google/gemini-2.5-flash-lite`** (bỏ hậu tố `-preview`).
+### 2. `src/components/chat/ModelSelector.tsx`
+- Thêm entry `google/gemini-3.1-flash-lite` → label "Flash Lite 3.1", icon Zap, màu cyan.
+- Đặt làm default fallback trong `getModelDisplayInfo`.
 
-## Các thay đổi
+### 3. `src/components/chat/ChatBubble.tsx`
+- Thêm case badge cho `google/gemini-3.1-flash-lite`.
 
-### 1. Đổi tên model `flash-lite-preview` → `flash-lite`
+### 4. `supabase/functions/angel-ai/index.ts`
+- `selectModelBasedOnMode` trả về `google/gemini-3.1-flash-lite` cho mọi mode/độ dài.
 
-Tìm và thay thế ở:
-- `src/types/index.ts` — `AIModel` type
-- `src/components/chat/ModelSelector.tsx` — `MODEL_INFO` map + fallback
-- `src/components/chat/ChatBubble.tsx` — badge case
-- `supabase/functions/angel-ai/index.ts` — `SUPPORTED_MODELS`, `selectModelBasedOnMode`, mọi default
-- `supabase/functions/angel-ai-public/index.ts` — nếu có reference
-- `supabase/functions/_shared/aiProvider.ts` — comment/docstring nhắc tới flash-lite-preview
+### 5. `supabase/functions/angel-ai-public/index.ts`
+- Cập nhật default model tương tự nếu có logic chọn model.
 
-### 2. Fix `temperature` cho khi fallback sang OpenAI gpt-5-nano
+### 6. `supabase/functions/_shared/aiProvider.ts`
+- `modelForGemini`: strip prefix `google/` → `gemini-3.1-flash-lite` (đã tự xử lý qua regex hiện tại, không cần thay).
+- `modelForOpenAI`: đảm bảo regex `flash-lite` match `gemini-3.1-flash-lite` → `gpt-5-nano` (regex hiện tại đã đúng).
+- Không cần đổi logic, chỉ verify.
 
-Trong `supabase/functions/_shared/aiProvider.ts`, khi map sang OpenAI và model là `gpt-5-nano` (hoặc bất kỳ gpt-5* nào), **xoá field `temperature`** trước khi gửi (hoặc force = 1). Đây là rào chắn an toàn để fallback luôn chạy được kể cả khi caller set temperature khác.
+### 7. Deploy
+- Deploy lại `angel-ai` và `angel-ai-public`.
 
-### 3. Deploy lại edge functions
-
-Deploy `angel-ai` (và `angel-ai-public` nếu có thay đổi) ngay sau khi sửa.
-
-### 4. Verify
-
-Sau deploy, gửi 1 message test trong chat → kiểm tra log `angel-ai` xác nhận:
-- Gemini Direct trả 200 với model `gemini-2.5-flash-lite`
-- Không còn lỗi 400/404
+## Ghi chú kỹ thuật
+- Model id chính xác theo catalog Lovable: `google/gemini-3.1-flash-lite` (T,I,A,V→T, cost-efficient).
+- Gemini Direct API sẽ nhận `gemini-3.1-flash-lite` sau khi strip prefix.
+- Fallback chain giữ nguyên: Gemini Direct → OpenAI (`gpt-5-nano`) → Lovable Gateway.
+- Không đụng gì tới business logic RAG, chat history, hay UI khác.
