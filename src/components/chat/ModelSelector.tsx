@@ -177,13 +177,14 @@ export function ModelSelector({
 // Helper to get model display info for ChatBubble
 export function getModelDisplayInfo(modelId: AIModel) {
   const MODEL_INFO: Record<AIModel, { icon: React.ReactNode; name: string; color: string }> = {
+    'google/gemini-3.1-flash-lite': { icon: <Zap className="w-3 h-3" />, name: 'Flash Lite 3.1', color: 'text-cyan-500' },
     'google/gemini-2.5-flash-lite': { icon: <Zap className="w-3 h-3" />, name: 'Flash Lite', color: 'text-cyan-500' },
     'google/gemini-2.5-flash': { icon: <Zap className="w-3 h-3" />, name: 'Flash', color: 'text-blue-500' },
     'google/gemini-2.5-pro': { icon: <Sparkles className="w-3 h-3" />, name: 'Pro', color: 'text-purple-500' },
     'openai/gpt-5-mini': { icon: <Brain className="w-3 h-3" />, name: 'GPT-5 Mini', color: 'text-green-500' },
     'openai/gpt-5': { icon: <Brain className="w-3 h-3" />, name: 'GPT-5', color: 'text-amber-500' },
   };
-  return MODEL_INFO[modelId] || MODEL_INFO['google/gemini-2.5-flash-lite'];
+  return MODEL_INFO[modelId] || MODEL_INFO['google/gemini-3.1-flash-lite'];
 }
 
 export function getModeDisplayInfo(mode: SelectionMode) {
