@@ -12,6 +12,8 @@ interface ChatBubbleProps {
 
 const getModelBadge = (model?: AIModel) => {
   switch (model) {
+    case 'google/gemini-3.1-flash-lite':
+      return { icon: <Zap className="w-3 h-3" />, name: 'Flash Lite 3.1', color: 'text-cyan-500' };
     case 'google/gemini-2.5-flash-lite':
       return { icon: <Zap className="w-3 h-3" />, name: 'Flash Lite', color: 'text-cyan-500' };
     case 'google/gemini-2.5-flash':
