@@ -1001,12 +1001,11 @@ const DEEP_KEYWORDS = [
 type SelectionMode = 'auto' | 'fast' | 'deep';
 
 function selectModelBasedOnMode(mode: SelectionMode, message: string): string {
-  // Unified default: gemini-2.5-flash-lite cho mọi mode & mọi độ dài câu hỏi.
-  // Không còn fallback về gemini-2.5-flash, gpt-5-mini hay gpt-5 nữa.
+  // Unified default: gemini-3.1-flash-lite cho mọi mode & mọi độ dài câu hỏi.
   void mode;
   void message;
-  console.log("Model selection: → google/gemini-2.5-flash-lite (unified default)");
-  return "google/gemini-2.5-flash-lite";
+  console.log("Model selection: → google/gemini-3.1-flash-lite (unified default)");
+  return "google/gemini-3.1-flash-lite";
 }
 
 // ==================================================
