@@ -55,7 +55,7 @@ Ví dụ đúng:
 - "How to meditate daily"`;
 
     const { response, provider } = await callChatCompletion({
-      model: 'google/gemini-2.5-flash',
+      model: 'google/gemini-3.1-flash-lite',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `Tạo tiêu đề cho cuộc hội thoại này:\n\n"${userMessages}"` }

@@ -228,7 +228,7 @@ MỤC TIÊU:
       finalSystemPrompt,
       finalSystemPromptLength: finalSystemPrompt.length,
       finalMessages,
-      model: "google/gemini-2.5-flash",
+      model: "google/gemini-3.1-flash-lite",
     });
   } catch (err) {
     return jsonResp({ error: err instanceof Error ? err.message : String(err) }, 500);
