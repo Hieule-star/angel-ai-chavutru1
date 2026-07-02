@@ -364,7 +364,7 @@ export default {
           <pre className="bg-muted rounded-md p-4 text-xs md:text-sm overflow-x-auto">
             <code>{`{
   "message": "...câu trả lời của Angel AI (đã RAG knowledge base)...",
-  "model": "google/gemini-3-flash-preview",
+  "model": "google/gemini-3.1-flash-lite",
   "usage": { "prompt_tokens": 1234, "completion_tokens": 256 }
 }`}</code>
           </pre>

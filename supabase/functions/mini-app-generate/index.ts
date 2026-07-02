@@ -62,7 +62,7 @@ interface GenerateBody {
   prompt: string;
   template?: string;
   app_id?: string; // for regenerate
-  model?: "gemini-2.5-flash" | "gemini-2.5-pro";
+  model?: "gemini-3.1-flash-lite" | "gemini-2.5-pro";
 }
 
 Deno.serve(async (req) => {
@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
   const model = body.model
     ?? (prompt.length > 800 || /multi.?file|complex|advanced/i.test(prompt)
         ? "gemini-2.5-pro"
-        : "gemini-2.5-flash");
+        : "gemini-3.1-flash-lite");
 
   // ---- Call AI ----
   let aiJsonText = "";
