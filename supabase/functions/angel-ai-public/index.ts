@@ -452,7 +452,7 @@ serve(async (req) => {
       throw new Error("Neither GEMINI_API_KEY nor LOVABLE_API_KEY is configured");
     }
 
-    const aiModel = "google/gemini-2.5-flash";
+    const aiModel = "google/gemini-3.1-flash-lite";
     
     logInfo(requestId, "AI Request", {
       model: aiModel,
