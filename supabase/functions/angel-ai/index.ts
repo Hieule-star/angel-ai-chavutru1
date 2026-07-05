@@ -1321,11 +1321,11 @@ ${uniqueTopics
     // [CORE] + [CONTEXT] + [PRONOUN] + [SAFETY] + [KNOWLEDGE]
     // ==================================================
     const fullSystemPrompt = [
-      CORE_SYSTEM_PROMPT,      // [1] Core (immutable)
-      contextPrompt,           // [2] Context (dynamic)
-      pronounInstruction,      // [3] Pronoun (adaptive)
-      SAFETY_PROMPT,           // [4] Safety
-      knowledgeContext,        // [5] Knowledge base
+      effectiveCorePrompt,            // [1] Core (DB override or hardcoded)
+      effectiveContextPrompt,         // [2] Context (DB override or hardcoded)
+      effectivePronounInstruction,    // [3] Pronoun (DB override or hardcoded)
+      effectiveSafetyPrompt,          // [4] Safety (DB override or hardcoded)
+      knowledgeContext,               // [5] Knowledge base
     ].filter(Boolean).join('\n');
 
     console.log("=== PROMPT ASSEMBLY (ETERNAL CORE + LIGHT CONSTITUTION) ===");
