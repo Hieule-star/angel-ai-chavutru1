@@ -33,6 +33,7 @@ const adminNavItems = [
   { title: 'RAG Debugger', url: '/admin/rag-debug', icon: Bug },
   { title: 'Application Keys', url: '/admin/security/application-keys', icon: Lock },
   { title: 'Mini App Quotas', url: '/admin/mini-app-quotas', icon: Sparkles },
+  { title: 'System Prompts', url: '/admin/system-prompts', icon: FileText },
 ];
 
 
