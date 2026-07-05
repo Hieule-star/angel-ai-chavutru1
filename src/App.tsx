@@ -36,6 +36,7 @@ import MiniAppBuilder from "./pages/MiniAppBuilder";
 import MiniAppQuotas from "./pages/admin/MiniAppQuotas";
 import Integration from "./pages/Integration";
 import ShareKey from "./pages/admin/ShareKey";
+import SystemPromptManager from "./pages/admin/SystemPromptManager";
 
 const queryClient = new QueryClient();
 
