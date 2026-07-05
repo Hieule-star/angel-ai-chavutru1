@@ -599,6 +599,80 @@ export type Database = {
         }
         Relationships: []
       }
+      system_prompts: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          label: string
+          slug: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          category: string
+          content: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          slug: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          slug?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      system_prompts_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          content: string
+          id: string
+          prompt_id: string
+          slug: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          content: string
+          id?: string
+          prompt_id: string
+          slug: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          content?: string
+          id?: string
+          prompt_id?: string
+          slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_prompts_history_prompt_id_fkey"
+            columns: ["prompt_id"]
+            isOneToOne: false
+            referencedRelation: "system_prompts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -698,6 +772,27 @@ export type Database = {
       increment_light_points: {
         Args: { _amount?: number; _user_id: string }
         Returns: number
+      }
+      update_system_prompt: {
+        Args: { _content: string; _slug: string }
+        Returns: {
+          category: string
+          content: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          label: string
+          slug: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "system_prompts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {

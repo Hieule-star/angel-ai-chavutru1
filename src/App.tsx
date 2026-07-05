@@ -36,6 +36,7 @@ import MiniAppBuilder from "./pages/MiniAppBuilder";
 import MiniAppQuotas from "./pages/admin/MiniAppQuotas";
 import Integration from "./pages/Integration";
 import ShareKey from "./pages/admin/ShareKey";
+import SystemPromptManager from "./pages/admin/SystemPromptManager";
 
 const queryClient = new QueryClient();
 
@@ -82,6 +83,7 @@ function AppContent() {
       <Route path="/mini-apps" element={<MiniApps />} />
       <Route path="/mini-apps/:id" element={<MiniAppBuilder />} />
       <Route path="/admin/mini-app-quotas" element={<MiniAppQuotas />} />
+      <Route path="/admin/system-prompts" element={<SystemPromptManager />} />
       <Route path="/install" element={<Install />} />
       <Route path="/docs/platform" element={<Platform />} />
       <Route path="/integration" element={<Integration />} />
