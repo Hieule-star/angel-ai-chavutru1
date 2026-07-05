@@ -83,6 +83,7 @@ function AppContent() {
       <Route path="/mini-apps" element={<MiniApps />} />
       <Route path="/mini-apps/:id" element={<MiniAppBuilder />} />
       <Route path="/admin/mini-app-quotas" element={<MiniAppQuotas />} />
+      <Route path="/admin/system-prompts" element={<SystemPromptManager />} />
       <Route path="/install" element={<Install />} />
       <Route path="/docs/platform" element={<Platform />} />
       <Route path="/integration" element={<Integration />} />
