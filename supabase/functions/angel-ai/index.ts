@@ -1117,6 +1117,56 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // ==================================================
+    // LOAD SYSTEM PROMPT OVERRIDES FROM DB (with fallback + auto-seed)
+    // ==================================================
+    let effectiveCorePrompt = CORE_SYSTEM_PROMPT;
+    let effectiveContextPrompt = contextPrompt;
+    let effectivePronounInstruction = pronounInstruction;
+    let effectiveSafetyPrompt = SAFETY_PROMPT;
+
+    if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        const sbAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+        const { data: promptRows } = await sbAdmin
+          .from('system_prompts')
+          .select('slug, content, is_active');
+
+        const promptMap: Record<string, string> = {};
+        for (const row of promptRows || []) {
+          if (row.is_active && row.content) promptMap[row.slug] = row.content;
+        }
+
+        if (promptMap['core']) effectiveCorePrompt = promptMap['core'];
+        const ctxKey = `context.${intentParams.contextPromptId}`;
+        if (promptMap[ctxKey]) effectiveContextPrompt = promptMap[ctxKey];
+        const pronKey = `pronoun.${pronounStyle}`;
+        if (promptMap[pronKey]) effectivePronounInstruction = promptMap[pronKey];
+        if (promptMap['safety']) effectiveSafetyPrompt = promptMap['safety'];
+
+        // Auto-seed missing defaults (fire-and-forget)
+        const defaults: Array<{ slug: string; category: string; label: string; content: string }> = [
+          { slug: 'core', category: 'core', label: 'Core Identity (Angel AI Eternal Core)', content: CORE_SYSTEM_PROMPT },
+          { slug: 'safety', category: 'safety', label: 'Safety Rules', content: SAFETY_PROMPT },
+          ...Object.entries(CONTEXT_PROMPTS).map(([k, v]) => ({
+            slug: `context.${k}`, category: 'context', label: `Context — ${k}`, content: v,
+          })),
+          ...Object.entries(PRONOUN_INSTRUCTIONS).map(([k, v]) => ({
+            slug: `pronoun.${k}`, category: 'pronoun', label: `Pronoun — ${k}`, content: v,
+          })),
+        ];
+        const missing = defaults.filter(d => !(d.slug in promptMap) && !(promptRows || []).some((r: any) => r.slug === d.slug));
+        if (missing.length > 0) {
+          sbAdmin.from('system_prompts').insert(missing).then(({ error }) => {
+            if (error) console.warn('[system_prompts] auto-seed failed:', error.message);
+            else console.log(`[system_prompts] auto-seeded ${missing.length} defaults`);
+          });
+        }
+      } catch (e) {
+        console.warn('[system_prompts] override load failed, using hardcoded defaults:', (e as Error).message);
+      }
+    }
+
     // Fetch knowledge base for context
     let knowledgeContext = "";
     let usedSources: { id: string; title: string; category: string }[] = [];
