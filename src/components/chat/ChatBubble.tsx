@@ -5,6 +5,8 @@ import { Link } from 'react-router-dom';
 import type { ChatMessage, AIModel, AIProvider } from '@/types';
 import angelLogo from '@/assets/angel-logo.png';
 import { AudioAttachment, extractAudioUrls } from './AudioAttachment';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface ChatBubbleProps {
   message: ChatMessage;
@@ -38,10 +40,47 @@ const getProviderBadge = (provider?: AIProvider) => {
 
 export function ChatBubble({ message }: ChatBubbleProps) {
   const [showSources, setShowSources] = useState(false);
+  const [submittedFeedback, setSubmittedFeedback] = useState<Record<string, string>>({});
+  const { toast } = useToast();
   const isUser = message.role === 'user';
   const modelBadge = !isUser ? getModelBadge(message.model) : null;
   const providerBadge = !isUser ? getProviderBadge(message.provider) : null;
   const hasSources = !isUser && message.sources && message.sources.length > 0;
+
+  async function submitKnowledgeFeedback(topicId: string, feedbackType: string) {
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData.user?.id;
+
+    if (!userId) {
+      toast({
+        title: 'Cáº§n Ä‘Äƒng nháº­p',
+        description: 'Báº¡n cáº§n Ä‘Äƒng nháº­p Ä‘á»ƒ gá»­i feedback knowledge.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const feedbackTable = supabase.from('knowledge_feedback') as unknown as {
+      insert: (payload: { topic_id: string; feedback_type: string; user_id: string }) => Promise<{ error: { message: string } | null }>;
+    };
+    const { error } = await feedbackTable.insert({
+      topic_id: topicId,
+      feedback_type: feedbackType,
+      user_id: userId,
+    });
+
+    if (error) {
+      toast({
+        title: 'ChÆ°a gá»­i Ä‘Æ°á»£c feedback',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSubmittedFeedback((prev) => ({ ...prev, [topicId]: feedbackType }));
+    toast({ title: 'ÄÃ£ ghi nháº­n feedback knowledge.' });
+  }
 
   return (
     <motion.div
@@ -130,8 +169,8 @@ export function ChatBubble({ message }: ChatBubbleProps) {
                 >
                   <div className="mt-2 space-y-1">
                     {message.sources!.map((source, index) => (
+                      <div key={index} className="space-y-1">
                       <Link
-                        key={index}
                         to={`/knowledge?topic=${source.id}`}
                         className="flex items-center gap-2 text-xs bg-angel-gold/5 hover:bg-angel-gold/10 rounded-lg px-2 py-1.5 transition-colors group"
                       >
@@ -140,6 +179,26 @@ export function ChatBubble({ message }: ChatBubbleProps) {
                         <span className="text-muted-foreground text-[10px] shrink-0">{source.category}</span>
                         <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-angel-gold transition-colors" />
                       </Link>
+                      <div className="flex flex-wrap gap-1 px-2 pb-1">
+                        {[
+                          ['correct', 'ÄÃºng'],
+                          ['incorrect', 'ChÆ°a Ä‘Ãºng'],
+                          ['outdated', 'ThÃ´ng tin cÅ©'],
+                          ['needs_more', 'Cáº§n bá»• sung'],
+                        ].map(([type, label]) => (
+                          <button
+                            key={type}
+                            type="button"
+                            disabled={submittedFeedback[source.id] === type}
+                            onClick={() => submitKnowledgeFeedback(source.id, type)}
+                            className="rounded-full border border-angel-gold/20 px-2 py-0.5 text-[10px] text-muted-foreground hover:text-angel-gold disabled:bg-angel-gold/10 disabled:text-angel-gold"
+                          >
+                            {submittedFeedback[source.id] === type ? '✓ ' : ''}
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      </div>
                     ))}
                   </div>
                 </motion.div>

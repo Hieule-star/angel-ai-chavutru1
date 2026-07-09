@@ -38,10 +38,10 @@ export default function AdminDashboard() {
       try {
         const [usersRes, topicsRes, messagesRes, adminsRes, categoriesRes] = await Promise.all([
           supabase.from('profiles').select('id', { count: 'exact', head: true }),
-          supabase.from('knowledge_topics').select('id', { count: 'exact', head: true }),
+          supabase.from('knowledge_topics').select('id', { count: 'exact', head: true }).eq('status' as never, 'active' as never),
           supabase.from('chat_history').select('id', { count: 'exact', head: true }),
           supabase.from('user_roles').select('id', { count: 'exact', head: true }).eq('role', 'admin'),
-          supabase.from('knowledge_topics').select('category'),
+          supabase.from('knowledge_topics').select('category').eq('status' as never, 'active' as never),
         ]);
 
         setStats({

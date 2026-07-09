@@ -19,6 +19,7 @@ export interface KnowledgeSource {
   id: string;
   title: string;
   category: string;
+  version?: string;
 }
 
 export interface ChatMessage {
@@ -49,6 +50,12 @@ export interface KnowledgeTopic {
   icon: string;
   category: string;
   created_at: string;
+  version?: string;
+  status?: string;
+  effective_from?: string | null;
+  effective_until?: string | null;
+  source_title?: string | null;
+  source_url?: string | null;
 }
 
 export interface WalletInfo {

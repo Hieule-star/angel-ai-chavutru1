@@ -570,6 +570,14 @@ interface KnowledgeTopic {
   audio_url?: string | null;
 }
 
+function activeKnowledgeFilter<T extends { eq: (column: string, value: string) => T; or: (filters: string) => T }>(query: T) {
+  const nowIso = new Date().toISOString();
+  return query
+    .eq("status", "active")
+    .or(`effective_from.is.null,effective_from.lte.${nowIso}`)
+    .or(`effective_until.is.null,effective_until.gte.${nowIso}`);
+}
+
 // ==================================================
 // RAG TEXT NORMALIZATION HELPERS
 // ==================================================
@@ -1185,10 +1193,10 @@ serve(async (req) => {
       
       if (isFatherQuery) {
         // Priority search for Father Universe content
-        const { data: fatherTopics } = await supabase
+        const { data: fatherTopics } = await activeKnowledgeFilter(supabase
           .from("knowledge_topics")
           .select("id, title, description, content, category, audio_url")
-          .or('title.ilike.%cha vũ trụ%,title.ilike.%father universe%,content.ilike.%cha vũ trụ%')
+          .or('title.ilike.%cha vũ trụ%,title.ilike.%father universe%,content.ilike.%cha vũ trụ%'))
           .limit(20);
         
         if (fatherTopics) {
@@ -1196,10 +1204,10 @@ serve(async (req) => {
         }
         
         // Also get Divine Mantras category topics
-        const { data: mantrasTopics } = await supabase
+        const { data: mantrasTopics } = await activeKnowledgeFilter(supabase
           .from("knowledge_topics")
           .select("id, title, description, content, category, audio_url")
-          .eq('category', 'Divine Mantras')
+          .eq('category', 'Divine Mantras'))
           .limit(20);
         
         if (mantrasTopics) {
@@ -1236,10 +1244,10 @@ serve(async (req) => {
         for (const term of allSearchTerms) {
           const safe = term.replace(/[,()%]/g, ' ').trim();
           if (!safe) continue;
-          const { data: keywordMatches } = await supabase
+          const { data: keywordMatches } = await activeKnowledgeFilter(supabase
             .from("knowledge_topics")
             .select("id, title, description, content, category, audio_url")
-            .or(`title.ilike.%${safe}%,description.ilike.%${safe}%,content.ilike.%${safe}%`)
+            .or(`title.ilike.%${safe}%,description.ilike.%${safe}%,content.ilike.%${safe}%`))
             .limit(8);
           if (keywordMatches) {
             const existingIds = new Set(allTopics.map(t => t.id));
@@ -1251,10 +1259,10 @@ serve(async (req) => {
         
         // Fill with most recent general topics if pool is still thin
         if (allTopics.length < 10) {
-          const { data: generalTopics } = await supabase
+          const { data: generalTopics } = await activeKnowledgeFilter(supabase
             .from("knowledge_topics")
             .select("id, title, description, content, category, audio_url")
-            .order('created_at', { ascending: false })
+            .order('created_at', { ascending: false }))
             .limit(20);
           if (generalTopics) {
             const existingIds = new Set(allTopics.map(t => t.id));

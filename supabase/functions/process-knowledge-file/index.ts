@@ -7,6 +7,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+type IncomingKnowledgeTopic = {
+  title: string;
+  description?: string;
+  content: string;
+  status?: string;
+  version?: string;
+  canonical_key?: string;
+  source_title?: string;
+  source_url?: string;
+  provided_by?: string;
+};
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -69,12 +81,23 @@ serve(async (req) => {
 
     if (action === 'save') {
       // Save topics to database
-      const insertData = topics.map((topic: any) => ({
+      const insertData = (topics as IncomingKnowledgeTopic[]).map((topic) => ({
         title: topic.title,
         description: topic.description || `Bài dẫn thiền: ${topic.title}`,
         content: topic.content,
         icon: '🧘',
         category: category || 'Bé Ly dẫn thiền',
+        status: topic.status || 'review',
+        version: topic.version || '1.0',
+        canonical_key: topic.canonical_key || topic.title
+          ?.toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, ''),
+        source_title: topic.source_title || null,
+        source_url: topic.source_url || null,
+        provided_by: topic.provided_by || null,
       }));
 
       const { data, error } = await supabase

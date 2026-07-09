@@ -22,6 +22,14 @@ const STOPWORDS = new Set([
   "what","how","why","when","where","the","and","for","you","are","can","please","help"
 ]);
 
+function activeKnowledgeFilter<T extends { eq: (column: string, value: string) => T; or: (filters: string) => T }>(query: T) {
+  const nowIso = new Date().toISOString();
+  return query
+    .eq("status", "active")
+    .or(`effective_from.is.null,effective_from.lte.${nowIso}`)
+    .or(`effective_until.is.null,effective_until.gte.${nowIso}`);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -74,10 +82,10 @@ serve(async (req) => {
     for (const kw of keywords) {
       const safe = kw.replace(/[%,()]/g, " ").trim();
       if (!safe) continue;
-      const { data } = await admin
+      const { data } = await activeKnowledgeFilter(admin
         .from("knowledge_topics")
         .select("id, title, description, content, category, icon")
-        .or(`title.ilike.%${safe}%,description.ilike.%${safe}%,content.ilike.%${safe}%`)
+        .or(`title.ilike.%${safe}%,description.ilike.%${safe}%,content.ilike.%${safe}%`))
         .limit(8);
       if (data) {
         for (const t of data as Topic[]) {
@@ -90,10 +98,10 @@ serve(async (req) => {
 
     let funEcosystemSeeded = false;
     if (isFunQuery) {
-      const { data: funTopics } = await admin
+      const { data: funTopics } = await activeKnowledgeFilter(admin
         .from("knowledge_topics")
         .select("id, title, description, content, category, icon")
-        .eq("category", "FUN Ecosystem")
+        .eq("category", "FUN Ecosystem"))
         .limit(10);
       if (funTopics) {
         funEcosystemSeeded = true;
@@ -108,9 +116,9 @@ serve(async (req) => {
     let fallbackUsed = false;
     if (matched.size === 0) {
       fallbackUsed = true;
-      const { data: defaults } = await admin
+      const { data: defaults } = await activeKnowledgeFilter(admin
         .from("knowledge_topics")
-        .select("id, title, description, content, category, icon")
+        .select("id, title, description, content, category, icon"))
         .limit(8);
       if (defaults) {
         for (const t of defaults as Topic[]) {

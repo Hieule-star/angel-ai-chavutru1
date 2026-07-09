@@ -9,6 +9,9 @@ export function useKnowledgeTopics() {
       const { data, error } = await supabase
         .from('knowledge_topics')
         .select('*')
+        .eq('status' as never, 'active' as never)
+        .or(`effective_from.is.null,effective_from.lte.${new Date().toISOString()}` as never)
+        .or(`effective_until.is.null,effective_until.gte.${new Date().toISOString()}` as never)
         .order('category', { ascending: true })
         .order('title', { ascending: true });
 

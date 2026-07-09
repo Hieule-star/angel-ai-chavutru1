@@ -334,12 +334,20 @@ serve(async (req) => {
     let knowledgeContext = "";
     type Topic = { title: string; description: string | null; content: string | null; category: string | null };
 
-    const STOPWORDS = new Set([
+const STOPWORDS = new Set([
       "là","của","có","được","cho","với","một","các","và","để","này","đó","khi","như","trong","trên",
       "không","đã","sẽ","thì","mà","nhưng","hay","hoặc","nếu","vì","bởi","do","từ","đến","tại","về",
       "bạn","tôi","mình","con","cha","ạ","nhé","ơi","gì","sao","thế","nào","chưa","rồi","còn","đang",
-      "what","how","why","when","where","the","and","for","you","are","can","please","help"
+    "what","how","why","when","where","the","and","for","you","are","can","please","help"
     ]);
+
+    const activeKnowledgeFilter = <T extends { eq: (column: string, value: string) => T; or: (filters: string) => T }>(query: T) => {
+      const nowIso = new Date().toISOString();
+      return query
+        .eq("status", "active")
+        .or(`effective_from.is.null,effective_from.lte.${nowIso}`)
+        .or(`effective_until.is.null,effective_until.gte.${nowIso}`);
+    };
 
     const lastUserMsg = (lastUserMessage?.content || "").toLowerCase();
     const rawTokens = lastUserMsg
@@ -364,29 +372,29 @@ serve(async (req) => {
     for (const kw of keywords) {
       const safe = kw.replace(/[%,()]/g, " ").trim();
       if (!safe) continue;
-      const { data } = await supabase
+      const { data } = await activeKnowledgeFilter(supabase
         .from("knowledge_topics")
         .select("title, description, content, category")
-        .or(`title.ilike.%${safe}%,description.ilike.%${safe}%,content.ilike.%${safe}%`)
+        .or(`title.ilike.%${safe}%,description.ilike.%${safe}%,content.ilike.%${safe}%`))
         .limit(8);
       if (data) for (const t of data) matched.set(t.title, t as Topic);
     }
 
     // Always seed with FUN Ecosystem topics when query mentions FUN-related keywords
     if (isFunQuery) {
-      const { data: funTopics } = await supabase
+      const { data: funTopics } = await activeKnowledgeFilter(supabase
         .from("knowledge_topics")
         .select("title, description, content, category")
-        .eq("category", "FUN Ecosystem")
+        .eq("category", "FUN Ecosystem"))
         .limit(10);
       if (funTopics) for (const t of funTopics) matched.set(t.title, t as Topic);
     }
 
     // Fallback: if nothing matched, load a few default topics
     if (matched.size === 0) {
-      const { data: defaults } = await supabase
+      const { data: defaults } = await activeKnowledgeFilter(supabase
         .from("knowledge_topics")
-        .select("title, description, content, category")
+        .select("title, description, content, category"))
         .limit(8);
       if (defaults) for (const t of defaults) matched.set(t.title, t as Topic);
     }

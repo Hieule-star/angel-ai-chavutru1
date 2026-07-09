@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
+  Archive,
   BookOpen,
+  CheckCircle2,
   Eye,
   Filter,
   Layers,
@@ -9,7 +11,9 @@ import {
   Pencil,
   Plus,
   Search,
+  Send,
   Trash2,
+  XCircle,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { AdminLayout } from '@/components/admin/AdminLayout';
@@ -55,6 +59,55 @@ interface KnowledgeTopic {
   category: string | null;
   audio_url: string | null;
   created_at: string | null;
+  canonical_key?: string | null;
+  version?: string | null;
+  status?: string | null;
+  effective_from?: string | null;
+  effective_until?: string | null;
+  source_title?: string | null;
+  source_url?: string | null;
+  provided_by?: string | null;
+  approved_at?: string | null;
+  deprecated_at?: string | null;
+}
+
+interface KnowledgeFeedback {
+  id: string;
+  feedback_type: string;
+  review_status: string;
+  message: string | null;
+  created_at: string;
+  knowledge_topics?: { title: string | null } | null;
+}
+
+type SupabaseError = { message: string };
+type TopicMutation = {
+  select: (columns: string) => {
+    single: () => Promise<{ data: KnowledgeTopic; error: SupabaseError | null }>;
+  };
+};
+type TopicTable = {
+  insert: (payload: Record<string, unknown>) => TopicMutation;
+  update: (payload: Record<string, unknown>) => {
+    eq: (column: string, value: string) => TopicMutation;
+  };
+};
+type FeedbackTable = {
+  select: (columns: string) => {
+    eq: (column: string, value: string) => {
+      order: (column: string, options: { ascending: boolean }) => {
+        limit: (count: number) => Promise<{ data: KnowledgeFeedback[] | null; error: SupabaseError | null }>;
+      };
+    };
+  };
+};
+
+function knowledgeTopicsTable() {
+  return supabase.from('knowledge_topics') as unknown as TopicTable;
+}
+
+function knowledgeFeedbackTable() {
+  return supabase.from('knowledge_feedback') as unknown as FeedbackTable;
 }
 
 type TopicForm = {
@@ -64,6 +117,14 @@ type TopicForm = {
   icon: string;
   category: string;
   audio_url: string;
+  canonical_key: string;
+  version: string;
+  status: string;
+  effective_from: string;
+  effective_until: string;
+  source_title: string;
+  source_url: string;
+  provided_by: string;
 };
 
 const emptyForm: TopicForm = {
@@ -73,7 +134,46 @@ const emptyForm: TopicForm = {
   icon: '📚',
   category: 'FUN Ecosystem',
   audio_url: '',
+  canonical_key: '',
+  version: '1.0',
+  status: 'draft',
+  effective_from: '',
+  effective_until: '',
+  source_title: '',
+  source_url: '',
+  provided_by: '',
 };
+
+const STATUS_OPTIONS = ['draft', 'review', 'approved', 'active', 'deprecated', 'archived'];
+
+const STATUS_LABELS: Record<string, string> = {
+  draft: 'Draft',
+  review: 'Review',
+  approved: 'Approved',
+  active: 'Active',
+  deprecated: 'Deprecated',
+  archived: 'Archived',
+};
+
+function toDateTimeLocal(value?: string | null) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 16);
+}
+
+function fromDateTimeLocal(value: string) {
+  return value ? new Date(value).toISOString() : null;
+}
+
+function makeCanonicalKey(title: string) {
+  return title
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
 
 function toForm(topic: KnowledgeTopic): TopicForm {
   return {
@@ -83,16 +183,26 @@ function toForm(topic: KnowledgeTopic): TopicForm {
     icon: topic.icon || '📚',
     category: topic.category || '',
     audio_url: topic.audio_url || '',
+    canonical_key: topic.canonical_key || '',
+    version: topic.version || '1.0',
+    status: topic.status || 'draft',
+    effective_from: toDateTimeLocal(topic.effective_from),
+    effective_until: toDateTimeLocal(topic.effective_until),
+    source_title: topic.source_title || '',
+    source_url: topic.source_url || '',
+    provided_by: topic.provided_by || '',
   };
 }
 
 export default function KnowledgeManager() {
   const [topics, setTopics] = useState<KnowledgeTopic[]>([]);
+  const [feedback, setFeedback] = useState<KnowledgeFeedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState<TopicForm>(emptyForm);
   const [editTopic, setEditTopic] = useState<KnowledgeTopic | null>(null);
@@ -114,6 +224,15 @@ export default function KnowledgeManager() {
 
       if (error) throw error;
       setTopics(data || []);
+
+      const { data: feedbackData, error: feedbackError } = await knowledgeFeedbackTable()
+        .select('id, feedback_type, review_status, message, created_at, knowledge_topics(title)')
+        .eq('review_status', 'open')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (feedbackError) throw feedbackError;
+      setFeedback(feedbackData || []);
     } catch (err) {
       console.error('Error fetching knowledge topics:', err);
       toast({
@@ -161,9 +280,10 @@ export default function KnowledgeManager() {
         (topic.description || '').toLowerCase().includes(query) ||
         (topic.content || '').toLowerCase().includes(query);
       const matchesCategory = categoryFilter === 'all' || topic.category === categoryFilter;
-      return matchesSearch && matchesCategory;
+      const matchesStatus = statusFilter === 'all' || (topic.status || 'active') === statusFilter;
+      return matchesSearch && matchesCategory && matchesStatus;
     });
-  }, [categoryFilter, search, topics]);
+  }, [categoryFilter, search, statusFilter, topics]);
 
   async function createTopic() {
     const payload = normalizeForm(createForm);
@@ -171,8 +291,7 @@ export default function KnowledgeManager() {
 
     setSaving(true);
     try {
-      const { data, error } = await supabase
-        .from('knowledge_topics')
+      const { data, error } = await knowledgeTopicsTable()
         .insert(payload)
         .select('*')
         .single();
@@ -201,8 +320,7 @@ export default function KnowledgeManager() {
 
     setSaving(true);
     try {
-      const { data, error } = await supabase
-        .from('knowledge_topics')
+      const { data, error } = await knowledgeTopicsTable()
         .update(payload)
         .eq('id', editTopic.id)
         .select('*')
@@ -251,6 +369,34 @@ export default function KnowledgeManager() {
     }
   }
 
+  async function updateTopicStatus(topic: KnowledgeTopic, status: string) {
+    setSaving(true);
+    try {
+      const payload: Record<string, string | null> = { status };
+      if (status === 'active') payload.approved_at = new Date().toISOString();
+      if (status === 'deprecated') payload.deprecated_at = new Date().toISOString();
+
+      const { data, error } = await knowledgeTopicsTable()
+        .update(payload)
+        .eq('id', topic.id)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      setTopics((prev) => prev.map((item) => (item.id === topic.id ? data : item)));
+      toast({ title: `ÄÃ£ chuyá»ƒn topic sang ${STATUS_LABELS[status] || status}.` });
+    } catch (err: unknown) {
+      toast({
+        title: 'KhÃ´ng cáº­p nháº­t Ä‘Æ°á»£c tráº¡ng thÃ¡i',
+        description: getErrorMessage(err, 'Vui lÃ²ng thá»­ láº¡i.'),
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function normalizeForm(form: TopicForm) {
     const title = form.title.trim();
     const category = form.category.trim();
@@ -272,6 +418,14 @@ export default function KnowledgeManager() {
       description: form.description.trim() || null,
       icon: form.icon.trim() || '📚',
       audio_url: form.audio_url.trim() || null,
+      canonical_key: form.canonical_key.trim() || makeCanonicalKey(title),
+      version: form.version.trim() || '1.0',
+      status: form.status || 'draft',
+      effective_from: fromDateTimeLocal(form.effective_from),
+      effective_until: fromDateTimeLocal(form.effective_until),
+      source_title: form.source_title.trim() || null,
+      source_url: form.source_url.trim() || null,
+      provided_by: form.provided_by.trim() || null,
     };
   }
 
@@ -349,8 +503,51 @@ export default function KnowledgeManager() {
                 </SelectContent>
               </Select>
             </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full lg:w-[180px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All status</SelectItem>
+                {STATUS_OPTIONS.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {STATUS_LABELS[status]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </Card>
+
+        {feedback.length > 0 && (
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="font-semibold">Knowledge feedback cần xử lý</h2>
+                <p className="text-sm text-muted-foreground">
+                  {feedback.length} feedback open mới nhất từ user/admin.
+                </p>
+              </div>
+              <Badge variant="outline">{feedback.length}</Badge>
+            </div>
+            <div className="grid gap-2">
+              {feedback.map((item) => (
+                <div key={item.id} className="rounded-lg border border-border/50 p-3 text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="secondary">{item.feedback_type}</Badge>
+                    <span className="font-medium">
+                      {item.knowledge_topics?.title || 'Knowledge topic'}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {format(new Date(item.created_at), 'dd/MM/yyyy HH:mm')}
+                    </span>
+                  </div>
+                  {item.message && <p className="mt-1 text-muted-foreground">{item.message}</p>}
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
         <Card>
           {loading ? (
@@ -363,6 +560,8 @@ export default function KnowledgeManager() {
                 <TableRow>
                   <TableHead>Topic</TableHead>
                   <TableHead>Category</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Version</TableHead>
                   <TableHead>Độ dài</TableHead>
                   <TableHead>Ngày tạo</TableHead>
                   <TableHead className="text-right">Thao tác</TableHead>
@@ -371,7 +570,7 @@ export default function KnowledgeManager() {
               <TableBody>
                 {filteredTopics.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                       Không tìm thấy topic phù hợp.
                     </TableCell>
                   </TableRow>
@@ -398,6 +597,14 @@ export default function KnowledgeManager() {
                           <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
+                      <TableCell>
+                        <Badge variant={(topic.status || 'active') === 'active' ? 'default' : 'outline'}>
+                          {STATUS_LABELS[topic.status || 'active'] || topic.status || 'Active'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {topic.version || '1.0'}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">
                         {(topic.content?.length || 0).toLocaleString()} ký tự
                       </TableCell>
@@ -409,6 +616,31 @@ export default function KnowledgeManager() {
                           <Button variant="ghost" size="icon" onClick={() => setViewTopic(topic)}>
                             <Eye className="w-4 h-4" />
                           </Button>
+                          {(topic.status || 'active') === 'draft' && (
+                            <Button variant="ghost" size="icon" onClick={() => updateTopicStatus(topic, 'review')} title="Send to review">
+                              <Send className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {(topic.status || 'active') === 'review' && (
+                            <Button variant="ghost" size="icon" onClick={() => updateTopicStatus(topic, 'approved')} title="Approve">
+                              <CheckCircle2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {['approved', 'draft', 'review'].includes(topic.status || 'active') && (
+                            <Button variant="ghost" size="icon" onClick={() => updateTopicStatus(topic, 'active')} title="Activate">
+                              <CheckCircle2 className="w-4 h-4 text-green-600" />
+                            </Button>
+                          )}
+                          {(topic.status || 'active') === 'active' && (
+                            <Button variant="ghost" size="icon" onClick={() => updateTopicStatus(topic, 'deprecated')} title="Deprecate">
+                              <XCircle className="w-4 h-4 text-orange-600" />
+                            </Button>
+                          )}
+                          {(topic.status || 'active') !== 'archived' && (
+                            <Button variant="ghost" size="icon" onClick={() => updateTopicStatus(topic, 'archived')} title="Archive">
+                              <Archive className="w-4 h-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -655,6 +887,91 @@ function TopicFormDialog({
                 {category}
               </Button>
             ))}
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-2">
+              <Label htmlFor={`${title}-status`}>Lifecycle status</Label>
+              <Select value={form.status} onValueChange={(status) => onChange({ ...form, status })}>
+                <SelectTrigger id={`${title}-status`}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {STATUS_LABELS[status]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor={`${title}-version`}>Version</Label>
+              <Input
+                id={`${title}-version`}
+                value={form.version}
+                onChange={(event) => onChange({ ...form, version: event.target.value })}
+                placeholder="1.0"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor={`${title}-canonical`}>Canonical key</Label>
+              <Input
+                id={`${title}-canonical`}
+                value={form.canonical_key}
+                onChange={(event) => onChange({ ...form, canonical_key: event.target.value })}
+                placeholder="auto-from-title"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor={`${title}-effective-from`}>Effective from</Label>
+              <Input
+                id={`${title}-effective-from`}
+                type="datetime-local"
+                value={form.effective_from}
+                onChange={(event) => onChange({ ...form, effective_from: event.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor={`${title}-effective-until`}>Effective until</Label>
+              <Input
+                id={`${title}-effective-until`}
+                type="datetime-local"
+                value={form.effective_until}
+                onChange={(event) => onChange({ ...form, effective_until: event.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-2">
+              <Label htmlFor={`${title}-source-title`}>Source title</Label>
+              <Input
+                id={`${title}-source-title`}
+                value={form.source_title}
+                onChange={(event) => onChange({ ...form, source_title: event.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor={`${title}-source-url`}>Source URL</Label>
+              <Input
+                id={`${title}-source-url`}
+                value={form.source_url}
+                onChange={(event) => onChange({ ...form, source_url: event.target.value })}
+                placeholder="https://..."
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor={`${title}-provided-by`}>Provided by</Label>
+              <Input
+                id={`${title}-provided-by`}
+                value={form.provided_by}
+                onChange={(event) => onChange({ ...form, provided_by: event.target.value })}
+              />
+            </div>
           </div>
 
           <div className="grid gap-2">
