@@ -333,38 +333,132 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_feedback: {
+        Row: {
+          created_at: string
+          feedback_type: string
+          id: string
+          message: string | null
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          topic_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          feedback_type: string
+          id?: string
+          message?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          topic_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          feedback_type?: string
+          id?: string
+          message?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          topic_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_feedback_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       knowledge_topics: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           audio_url: string | null
+          canonical_key: string | null
           category: string | null
           content: string | null
           created_at: string | null
+          created_by: string | null
+          deprecated_at: string | null
           description: string | null
+          effective_from: string | null
+          effective_until: string | null
           icon: string | null
           id: string
+          provided_by: string | null
+          replaced_by: string | null
+          reviewed_by: string | null
+          source_title: string | null
+          source_url: string | null
+          status: Database["public"]["Enums"]["knowledge_topic_status"]
           title: string
+          version: string
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           audio_url?: string | null
+          canonical_key?: string | null
           category?: string | null
           content?: string | null
           created_at?: string | null
+          created_by?: string | null
+          deprecated_at?: string | null
           description?: string | null
+          effective_from?: string | null
+          effective_until?: string | null
           icon?: string | null
           id?: string
+          provided_by?: string | null
+          replaced_by?: string | null
+          reviewed_by?: string | null
+          source_title?: string | null
+          source_url?: string | null
+          status?: Database["public"]["Enums"]["knowledge_topic_status"]
           title: string
+          version?: string
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           audio_url?: string | null
+          canonical_key?: string | null
           category?: string | null
           content?: string | null
           created_at?: string | null
+          created_by?: string | null
+          deprecated_at?: string | null
           description?: string | null
+          effective_from?: string | null
+          effective_until?: string | null
           icon?: string | null
           id?: string
+          provided_by?: string | null
+          replaced_by?: string | null
+          reviewed_by?: string | null
+          source_title?: string | null
+          source_url?: string | null
+          status?: Database["public"]["Enums"]["knowledge_topic_status"]
           title?: string
+          version?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_topics_replaced_by_fkey"
+            columns: ["replaced_by"]
+            isOneToOne: false
+            referencedRelation: "knowledge_topics"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mini_app_generation_log: {
         Row: {
@@ -797,6 +891,13 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      knowledge_topic_status:
+        | "draft"
+        | "review"
+        | "approved"
+        | "active"
+        | "deprecated"
+        | "archived"
       mini_app_status: "draft" | "preview" | "approved" | "deployed" | "failed"
     }
     CompositeTypes: {
@@ -926,6 +1027,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      knowledge_topic_status: [
+        "draft",
+        "review",
+        "approved",
+        "active",
+        "deprecated",
+        "archived",
+      ],
       mini_app_status: ["draft", "preview", "approved", "deployed", "failed"],
     },
   },
