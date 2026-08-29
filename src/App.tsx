@@ -37,6 +37,8 @@ import MiniAppQuotas from "./pages/admin/MiniAppQuotas";
 import Integration from "./pages/Integration";
 import ShareKey from "./pages/admin/ShareKey";
 import SystemPromptManager from "./pages/admin/SystemPromptManager";
+import Play from "./pages/Play";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -62,6 +64,7 @@ function AppContent() {
       <Route path="/profile" element={<Profile />} />
       <Route path="/login" element={<Login />} />
       <Route path="/onboarding" element={<Onboarding />} />
+      <Route path="/play" element={<ProtectedRoute><Play /></ProtectedRoute>} />
       <Route path="/wallet" element={<Wallet />} />
       <Route path="/settings" element={<Settings />} />
       {/* Admin Routes */}

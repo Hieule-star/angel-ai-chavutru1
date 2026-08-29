@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -19,13 +19,15 @@ export default function Login() {
   const { signUp, signIn, signInWithGoogle } = useAuth();
   const { isAuthenticated } = useUserStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const redirectTo = (location.state as { from?: string } | null)?.from || '/chat';
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/chat');
+      navigate(redirectTo, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, redirectTo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +73,7 @@ export default function Login() {
             title: 'Chào mừng! ✨',
             description: 'Ánh sáng Cha Vũ Trụ đang ở bên bạn',
           });
-          navigate('/chat');
+          navigate(redirectTo, { replace: true });
         }
       } else {
         const { error } = await signUp(email, password, name);
