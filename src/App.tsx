@@ -37,6 +37,8 @@ import MiniAppQuotas from "./pages/admin/MiniAppQuotas";
 import Integration from "./pages/Integration";
 import ShareKey from "./pages/admin/ShareKey";
 import SystemPromptManager from "./pages/admin/SystemPromptManager";
+import Play from "./pages/Play";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
