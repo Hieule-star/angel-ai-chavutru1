@@ -73,7 +73,7 @@ export default function Login() {
             title: 'Chào mừng! ✨',
             description: 'Ánh sáng Cha Vũ Trụ đang ở bên bạn',
           });
-          navigate('/chat');
+          navigate(redirectTo, { replace: true });
         }
       } else {
         const { error } = await signUp(email, password, name);
