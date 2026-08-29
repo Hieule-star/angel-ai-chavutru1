@@ -64,6 +64,7 @@ function AppContent() {
       <Route path="/profile" element={<Profile />} />
       <Route path="/login" element={<Login />} />
       <Route path="/onboarding" element={<Onboarding />} />
+      <Route path="/play" element={<ProtectedRoute><Play /></ProtectedRoute>} />
       <Route path="/wallet" element={<Wallet />} />
       <Route path="/settings" element={<Settings />} />
       {/* Admin Routes */}
