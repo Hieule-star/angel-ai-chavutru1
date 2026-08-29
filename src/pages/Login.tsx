@@ -19,13 +19,15 @@ export default function Login() {
   const { signUp, signIn, signInWithGoogle } = useAuth();
   const { isAuthenticated } = useUserStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const redirectTo = (location.state as { from?: string } | null)?.from || '/chat';
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/chat');
+      navigate(redirectTo, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, redirectTo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
