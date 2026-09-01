@@ -23,11 +23,18 @@ export default function Login() {
   const { toast } = useToast();
   const redirectTo = (location.state as { from?: string } | null)?.from || '/chat';
 
+  const { session } = useUserStore();
+
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(redirectTo, { replace: true });
+      if (!session?.user?.email_confirmed_at) {
+        navigate('/verify-email', { state: { from: redirectTo }, replace: true });
+      } else {
+        navigate(redirectTo, { replace: true });
+      }
     }
-  }, [isAuthenticated, navigate, redirectTo]);
+  }, [isAuthenticated, session, navigate, redirectTo]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
