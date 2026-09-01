@@ -69,8 +69,13 @@ function AppContent() {
       <Route path="/login" element={<Login />} />
       <Route path="/onboarding" element={<Onboarding />} />
       <Route path="/play" element={<ProtectedRoute><Play /></ProtectedRoute>} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/play" element={<ProtectedRoute requireVerifiedEmail><Play /></ProtectedRoute>} />
       <Route path="/wallet" element={<Wallet />} />
       <Route path="/settings" element={<Settings />} />
+
       {/* Admin Routes */}
       <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/admin/knowledge" element={<KnowledgeUpload />} />
