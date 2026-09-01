@@ -17,13 +17,12 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { signUp, signIn, signInWithGoogle } = useAuth();
-  const { isAuthenticated } = useUserStore();
+  const { isAuthenticated, session } = useUserStore();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const redirectTo = (location.state as { from?: string } | null)?.from || '/chat';
 
-  const { session } = useUserStore();
 
   useEffect(() => {
     if (isAuthenticated) {
