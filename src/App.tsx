@@ -38,7 +38,11 @@ import Integration from "./pages/Integration";
 import ShareKey from "./pages/admin/ShareKey";
 import SystemPromptManager from "./pages/admin/SystemPromptManager";
 import Play from "./pages/Play";
+import VerifyEmail from "./pages/VerifyEmail";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+
 
 const queryClient = new QueryClient();
 
@@ -64,9 +68,14 @@ function AppContent() {
       <Route path="/profile" element={<Profile />} />
       <Route path="/login" element={<Login />} />
       <Route path="/onboarding" element={<Onboarding />} />
-      <Route path="/play" element={<ProtectedRoute><Play /></ProtectedRoute>} />
+      
+      <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/play" element={<ProtectedRoute requireVerifiedEmail><Play /></ProtectedRoute>} />
       <Route path="/wallet" element={<Wallet />} />
       <Route path="/settings" element={<Settings />} />
+
       {/* Admin Routes */}
       <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/admin/knowledge" element={<KnowledgeUpload />} />
