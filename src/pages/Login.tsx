@@ -59,9 +59,15 @@ export default function Login() {
 
     try {
       if (isLogin) {
-        const { error } = await signIn(email, password);
+        const { data, error } = await signIn(email, password);
         if (error) {
-          if (error.message.includes('Invalid login credentials')) {
+          if (error.message.toLowerCase().includes('not confirmed')) {
+            toast({
+              title: 'Email chưa được xác minh',
+              description: 'Bạn hãy mở email và bấm liên kết xác minh để tiếp tục.',
+            });
+            navigate('/verify-email', { state: { from: redirectTo } });
+          } else if (error.message.includes('Invalid login credentials')) {
             toast({
               title: 'Cần xác minh thông tin',
               description: 'Thông tin chưa trùng khớp. Vui lòng kiểm tra lại email và mật khẩu của bạn.',
