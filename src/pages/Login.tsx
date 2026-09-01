@@ -80,6 +80,12 @@ export default function Login() {
               variant: 'destructive',
             });
           }
+        } else if (!data?.user?.email_confirmed_at) {
+          toast({
+            title: 'Email chưa được xác minh',
+            description: 'Bạn hãy xác minh email để mở khoá đầy đủ trải nghiệm.',
+          });
+          navigate('/verify-email', { state: { from: redirectTo }, replace: true });
         } else {
           toast({
             title: 'Chào mừng! ✨',
@@ -87,6 +93,7 @@ export default function Login() {
           });
           navigate(redirectTo, { replace: true });
         }
+
       } else {
         const { error } = await signUp(email, password, name);
         if (error) {
