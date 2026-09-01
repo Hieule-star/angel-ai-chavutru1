@@ -248,7 +248,15 @@ export default function Login() {
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
+                {isLogin && (
+                  <div className="text-right mt-2">
+                    <Link to="/forgot-password" className="text-xs text-primary hover:underline">
+                      Quên mật khẩu?
+                    </Link>
+                  </div>
+                )}
               </div>
+
               <Button
                 type="submit"
                 variant="divine"
