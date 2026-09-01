@@ -95,7 +95,7 @@ export default function Login() {
         }
 
       } else {
-        const { error } = await signUp(email, password, name);
+        const { data, error } = await signUp(email, password, name);
         if (error) {
           if (error.message.includes('already registered')) {
             toast({
@@ -110,6 +110,12 @@ export default function Login() {
               variant: 'destructive',
             });
           }
+        } else if (!data?.session) {
+          toast({
+            title: 'Hãy kiểm tra email của bạn ✨',
+            description: 'Mình đã gửi liên kết xác minh. Xác minh xong bạn có thể đăng nhập.',
+          });
+          navigate('/verify-email', { state: { from: redirectTo } });
         } else {
           toast({
             title: 'Tạo tài khoản thành công! ✨',
@@ -117,6 +123,7 @@ export default function Login() {
           });
           navigate('/onboarding');
         }
+
       }
     } catch (error) {
       toast({
